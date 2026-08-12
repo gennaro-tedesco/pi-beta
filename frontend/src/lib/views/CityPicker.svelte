@@ -10,7 +10,7 @@
 
   const defaultZoom = 2
   const defaultCenter: L.LatLngExpression = [20, 0]
-  const countryDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_110m_admin_0_countries.geojson'
+  const countryDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson'
   const cityDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_10m_populated_places_simple.geojson'
   const worldBounds = L.latLngBounds([-85, -180], [85, 180])
   const maxBoundsViscosity = 1
@@ -34,10 +34,15 @@
     permanent: true,
     interactive: true
   }
+  const maxSearchResults = 8
+  const citySearchLabel = 'Search cities'
+  const citySearchPlaceholder = 'Type a city name'
 
   interface CityProperties {
+    adm0name: string
     min_zoom: number
     name: string
+    pop_max: number
   }
 
   type CountryData = FeatureCollection<Polygon | MultiPolygon>
@@ -47,6 +52,27 @@
   let map: L.Map | null = null
   let cityData: CityData | null = null
   let cityLayer: L.LayerGroup | null = null
+  let cityQuery = ''
+
+  function selectCity(feature: CityData['features'][number]): void {
+    const [lon, lat] = feature.geometry.coordinates
+    dispatch('select', { lat, lon })
+  }
+
+  function findCities(query: string, data: CityData | null): CityData['features'] {
+    const normalizedQuery = query.trim().toLocaleLowerCase()
+    if (normalizedQuery === '' || data === null) return []
+
+    return data.features
+      .filter((feature) => feature.properties.name.toLocaleLowerCase().includes(normalizedQuery))
+      .sort((first, second) => {
+        const firstName = first.properties.name.toLocaleLowerCase()
+        const secondName = second.properties.name.toLocaleLowerCase()
+        const prefixDifference = Number(secondName.startsWith(normalizedQuery)) - Number(firstName.startsWith(normalizedQuery))
+        return prefixDifference || second.properties.pop_max - first.properties.pop_max
+      })
+      .slice(0, maxSearchResults)
+  }
 
   function renderCities(): void {
     if (map === null || cityData === null || cityLayer === null) return
@@ -63,7 +89,7 @@
 
       L.circleMarker([lat, lon], cityStyle)
         .bindTooltip(feature.properties.name, cityTooltipOptions)
-        .on('click', () => dispatch('select', { lat, lon }))
+        .on('click', () => selectCity(feature))
         .addTo(cityLayer)
     }
   }
@@ -87,11 +113,36 @@
   onDestroy(() => {
     map?.remove()
   })
+
+  $: citySearchResults = findCities(cityQuery, cityData)
 </script>
 
 <div class="picker">
   <div class="picker__header">
     <span class="picker__title">Choose a city</span>
+    <div class="picker__search">
+      <form autocomplete="off" on:submit|preventDefault={() => citySearchResults[0] && selectCity(citySearchResults[0])}>
+        <input
+          type="search"
+          bind:value={cityQuery}
+          aria-label={citySearchLabel}
+          placeholder={citySearchPlaceholder}
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+      </form>
+      {#if citySearchResults.length > 0}
+        <div class="picker__results" role="listbox" aria-label={citySearchLabel}>
+          {#each citySearchResults as city (city.properties.name + city.geometry.coordinates.join(','))}
+            <Button ghost on:click={() => selectCity(city)} role="option">
+              <span>{city.properties.name}</span>
+              <span class="picker__country">{city.properties.adm0name}</span>
+            </Button>
+          {/each}
+        </div>
+      {/if}
+    </div>
     <Button ghost on:click={() => dispatch('close')} aria-label="Close">
       <X size={20} />
     </Button>
@@ -112,15 +163,73 @@
   }
 
   .picker__header {
+    --header-padding: 1rem;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
+    padding: var(--header-padding);
   }
 
   .picker__title {
     font-size: 1.1rem;
     font-weight: 600;
+  }
+
+  .picker__search {
+    --search-width: min(24rem, 50vw);
+    --search-layer: 1000;
+    --search-gap: 0.25rem;
+    --search-radius: 6px;
+    position: absolute;
+    z-index: var(--search-layer);
+    left: 50%;
+    width: var(--search-width);
+    transform: translateX(-50%);
+  }
+
+  .picker__search input {
+    --search-background: rgba(255, 255, 255, 0.12);
+    --search-border: rgba(255, 255, 255, 0.28);
+    --search-spacing: 0.6rem;
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--search-spacing);
+    border: 1px solid var(--search-border);
+    border-radius: var(--search-radius);
+    background: var(--search-background);
+    color: inherit;
+    font: inherit;
+  }
+
+  .picker__search input::placeholder {
+    color: inherit;
+    opacity: 0.7;
+  }
+
+  .picker__results {
+    --results-background: rgba(27, 38, 54, 0.96);
+    --results-gap: 0.25rem;
+    --results-padding: 0.25rem;
+    position: absolute;
+    top: calc(100% + var(--search-gap));
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--results-gap);
+    padding: var(--results-padding);
+    border-radius: var(--search-radius);
+    background: var(--results-background);
+  }
+
+  .picker__results :global(.button) {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .picker__country {
+    opacity: 0.65;
   }
 
   .picker__map {
