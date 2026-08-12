@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
+  import { scale } from 'svelte/transition'
   import L from 'leaflet'
   import type { FeatureCollection, MultiPolygon, Point, Polygon } from 'geojson'
   import 'leaflet/dist/leaflet.css'
@@ -8,6 +9,7 @@
 
   const dispatch = createEventDispatcher<{ select: { lat: number; lon: number }; close: void }>()
 
+  const transitionDuration = 250
   const defaultZoom = 2
   const defaultCenter: L.LatLngExpression = [20, 0]
   const countryDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson'
@@ -104,10 +106,16 @@
       fetch(cityDataUrl).then((response) => response.json() as Promise<CityData>)
     ]).then(([countryData, loadedCityData]) => {
       if (map === null) return
-      L.geoJSON(countryData, { interactive: false, style: countryStyle }).addTo(map)
+      L.geoJSON(countryData, {
+        interactive: false,
+        style: countryStyle,
+        filter: (feature) => feature.properties.CONTINENT !== 'Antarctica'
+      }).addTo(map)
       cityData = loadedCityData
       renderCities()
     })
+
+    setTimeout(() => map?.invalidateSize(), transitionDuration + 50)
   })
 
   onDestroy(() => {
@@ -117,7 +125,11 @@
   $: citySearchResults = findCities(cityQuery, cityData)
 </script>
 
-<div class="picker">
+<div
+  class="picker"
+  out:scale={{ duration: transitionDuration }}
+  in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+>
   <div class="picker__header">
     <span class="picker__title">Choose a city</span>
     <div class="picker__search">

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import { scale } from 'svelte/transition'
   import { House, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
   import { Button, Message, Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
@@ -22,6 +23,8 @@
     { top: 34, left: 45, delay: 0.9 },
     { top: 28, left: 92, delay: 1.5 }
   ]
+
+  const transitionDuration = 250
 
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
   const weatherActionIconSize = 18
@@ -118,7 +121,11 @@
 
   <div class="content">
     {#if activeWidget === null}
-      <div class="tiles">
+      <div
+        class="tiles"
+        out:scale={{ duration: transitionDuration }}
+        in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+      >
         <Tile title="Photos" on:toggle={() => maximize('photos')}>
           <div slot="visual" class="tile__slideshow" aria-hidden="true">
             <img class="tile__ambient tile__ambient--camera" src={cameraIllustration} alt="" />
@@ -152,7 +159,12 @@
     {:else if activeWidget === 'weather'}
       <WeatherView bind:this={weatherViewRef} coords={selectedCoords} on:scene={handleWeatherScene} />
     {:else}
-      <Message variant="warning" message="Not implemented yet" />
+      <div
+        out:scale={{ duration: transitionDuration }}
+        in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+      >
+        <Message variant="warning" message="Not implemented yet" />
+      </div>
     {/if}
   </div>
 </main>

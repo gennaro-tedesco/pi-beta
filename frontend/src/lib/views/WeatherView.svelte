@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte'
+  import { scale } from 'svelte/transition'
   import { Droplets, Sun } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
@@ -10,6 +11,8 @@
   export let coords: { lat: number; lon: number } | null = null
 
   const dispatch = createEventDispatcher<{ scene: WeatherScene | null }>()
+
+  const transitionDuration = 250
 
   let weather: main.Weather | null = null
   let error: string | null = null
@@ -51,7 +54,11 @@
   $: if (coords) loadWeather()
 </script>
 
-<div class="weather">
+<div
+  class="weather"
+  out:scale={{ duration: transitionDuration }}
+  in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+>
   {#if error}
     <Message variant="error" message={error} />
   {:else if loading || weather === null || scene === null || iconUrl === null}
