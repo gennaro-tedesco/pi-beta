@@ -16,20 +16,20 @@
   }
 
   .message--error {
-    background-color: rgba(220, 53, 69, 0.15);
-    border: 1px solid rgba(220, 53, 69, 0.6);
-    color: #ff8a94;
+    background-color: rgba(255, 205, 210, 0.6);
+    border: 1px solid rgba(198, 40, 57, 0.35);
+    color: #a3283a;
   }
 
   .message--warning {
-    background-color: rgba(255, 193, 7, 0.15);
-    border: 1px solid rgba(255, 193, 7, 0.6);
-    color: #ffd764;
+    background-color: rgba(255, 236, 179, 0.65);
+    border: 1px solid rgba(179, 130, 0, 0.35);
+    color: #8a6100;
   }
 
   .message--success {
-    background-color: rgba(40, 167, 69, 0.15);
-    border: 1px solid rgba(40, 167, 69, 0.6);
-    color: #7be495;
+    background-color: rgba(200, 239, 214, 0.6);
+    border: 1px solid rgba(43, 130, 82, 0.35);
+    color: #2f7a52;
   }
 </style>

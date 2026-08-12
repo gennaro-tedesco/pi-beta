@@ -110,9 +110,9 @@
     --details-height: 1.5rem;
     --panel-gap: 1rem;
     --panel-height: calc(var(--panel-width) * 4 / 3 + var(--panel-gap) + var(--details-height));
-    --text-color: #ffffff;
-    --icon-glow-color: rgba(255, 255, 255, 0.18);
-    --row-background: rgba(255, 255, 255, 0.05);
+    --text-color: #4a3f66;
+    --icon-glow-color: rgba(255, 255, 255, 0.35);
+    --row-background: rgba(255, 255, 255, 0.5);
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -152,13 +152,14 @@
   }
 
   .card__city {
-    font-size: 1rem;
+    font-size: 2.25rem;
     font-weight: 600;
   }
 
   .card__scene {
     position: relative;
     flex: 1;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;

@@ -24,14 +24,20 @@
   class:tile--expanded={expanded}
   role="button"
   tabindex="0"
+  aria-label={title}
   aria-expanded={expanded}
   on:click={handleActivate}
   on:keydown={handleKeydown}
 >
   <div class="tile__header">
     <slot name="icon" />
-    <span class="tile__title">{title}</span>
   </div>
+
+  {#if !expanded}
+    <div class="tile__visual">
+      <slot name="visual" />
+    </div>
+  {/if}
 
   {#if expanded}
     <div class="tile__content">
@@ -45,25 +51,30 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(74, 63, 102, 0.15);
     border-radius: 10px;
     padding: 1rem;
     cursor: pointer;
     user-select: none;
+    overflow: hidden;
+  }
+
+  .tile__visual {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
   }
 
   .tile--expanded {
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(74, 63, 102, 0.4);
   }
 
   .tile__header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-  }
-
-  .tile__title {
-    font-weight: 600;
   }
 </style>

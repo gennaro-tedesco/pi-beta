@@ -1,3 +1,4 @@
+import '@fontsource-variable/lexend'
 import './style.css'
 import App from './App.svelte'
 

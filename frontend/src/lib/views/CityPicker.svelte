@@ -15,14 +15,14 @@
   const worldBounds = L.latLngBounds([-85, -180], [85, 180])
   const maxBoundsViscosity = 1
   const countryStyle: L.PathOptions = {
-    color: 'rgba(255, 255, 255, 0.72)',
-    fillColor: 'rgba(255, 255, 255, 0.08)',
+    color: 'rgba(74, 63, 102, 0.55)',
+    fillColor: 'rgba(255, 255, 255, 0.4)',
     fillOpacity: 1,
     weight: 1
   }
   const cityStyle: L.CircleMarkerOptions = {
-    color: '#ffffff',
-    fillColor: '#ffffff',
+    color: '#4a3f66',
+    fillColor: '#4a3f66',
     fillOpacity: 0.9,
     radius: 6,
     weight: 6
@@ -189,8 +189,8 @@
   }
 
   .picker__search input {
-    --search-background: rgba(255, 255, 255, 0.12);
-    --search-border: rgba(255, 255, 255, 0.28);
+    --search-background: rgba(255, 255, 255, 0.6);
+    --search-border: rgba(74, 63, 102, 0.25);
     --search-spacing: 0.6rem;
     box-sizing: border-box;
     width: 100%;
@@ -208,7 +208,7 @@
   }
 
   .picker__results {
-    --results-background: rgba(27, 38, 54, 0.96);
+    --results-background: rgba(255, 255, 255, 0.96);
     --results-gap: 0.25rem;
     --results-padding: 0.25rem;
     position: absolute;
@@ -250,8 +250,8 @@
   .picker__map :global(.leaflet-tooltip) {
     --city-label-background: transparent;
     --city-label-border: transparent;
-    --city-label-color: #ffffff;
-    --city-label-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+    --city-label-color: #4a3f66;
+    --city-label-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
     background: var(--city-label-background);
     border-color: var(--city-label-border);
     box-shadow: none;

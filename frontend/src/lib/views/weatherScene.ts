@@ -20,32 +20,32 @@ const conditionGroups: ConditionGroup[] = [
   {
     codes: [0],
     label: 'Clear',
-    gradient: 'linear-gradient(160deg, #1c4d73 0%, #4fa8e0 55%, #8ed6c9 100%)'
+    gradient: 'linear-gradient(160deg, #ffe8b8 0%, #ffd3e0 55%, #cdeaf9 100%)'
   },
   {
     codes: [1, 2, 3],
     label: 'Cloudy',
-    gradient: 'linear-gradient(160deg, #3b4a5a 0%, #7c93ab 55%, #b8c6d6 100%)'
+    gradient: 'linear-gradient(160deg, #e7e6f5 0%, #d8e1ee 55%, #eef1f7 100%)'
   },
   {
     codes: [45, 48],
     label: 'Fog',
-    gradient: 'linear-gradient(160deg, #3f4750 0%, #97a3ab 55%, #c7cfd4 100%)'
+    gradient: 'linear-gradient(160deg, #eef2f0 0%, #e3ecec 55%, #f2f6f5 100%)'
   },
   {
     codes: [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82],
     label: 'Rain',
-    gradient: 'linear-gradient(160deg, #1f2c3a 0%, #4a6178 55%, #6f8ea3 100%)'
+    gradient: 'linear-gradient(160deg, #cdeaf6 0%, #b9dcf0 55%, #dceaf7 100%)'
   },
   {
     codes: [71, 73, 75, 77, 85, 86],
     label: 'Snow',
-    gradient: 'linear-gradient(160deg, #4a5560 0%, #93a8b8 55%, #d7e3ea 100%)'
+    gradient: 'linear-gradient(160deg, #f3f9fd 0%, #e2eef8 55%, #eef6fb 100%)'
   },
   {
     codes: [95, 96, 99],
     label: 'Thunderstorm',
-    gradient: 'linear-gradient(160deg, #14141c 0%, #2c3347 55%, #4a5068 100%)'
+    gradient: 'linear-gradient(160deg, #e3d9f5 0%, #d3c3ea 55%, #ece3f7 100%)'
   }
 ]
 

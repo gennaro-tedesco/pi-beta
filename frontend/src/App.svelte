@@ -5,14 +5,10 @@
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
   import type { WeatherScene } from './lib/views/weatherScene'
+  import weatherTileAnimation from '@bybas/weather-icons/production/fill/all/partly-cloudy-day-rain.svg'
 
   type WidgetId = 'photos' | 'weather'
   type Coords = { lat: number; lon: number }
-
-  const widgets: { id: WidgetId; title: string }[] = [
-    { id: 'photos', title: 'Photos' },
-    { id: 'weather', title: 'Weather' }
-  ]
 
   const stars = [
     { top: 10, left: 15, delay: 0 },
@@ -121,9 +117,10 @@
   <div class="content">
     {#if activeWidget === null}
       <div class="tiles">
-        {#each widgets as widget (widget.id)}
-          <Tile title={widget.title} on:toggle={() => maximize(widget.id)} />
-        {/each}
+        <Tile title="Photos" on:toggle={() => maximize('photos')} />
+        <Tile title="Weather" on:toggle={() => maximize('weather')}>
+          <img slot="visual" class="tile__weather-scene" src={weatherTileAnimation} alt="" />
+        </Tile>
       </div>
     {:else if activeWidget === 'weather' && showCityPicker}
       <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
@@ -144,6 +141,7 @@
     box-sizing: border-box;
     padding: 1rem;
     gap: 1rem;
+    background-image: var(--app-background);
     background-size: 200% 200%;
     animation: driftGradient 30s ease-in-out infinite;
   }
@@ -253,6 +251,24 @@
     flex: 0 0 auto;
     height: var(--tile-height);
     width: var(--tile-width);
+  }
+
+  .tiles :global(.tile__weather-scene) {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.18));
+    animation: floatIcon 6s ease-in-out infinite;
+  }
+
+  @keyframes floatIcon {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
   }
 
   @keyframes driftGradient {

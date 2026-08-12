@@ -9,9 +9,9 @@
 
 <style>
   .button {
-    --border-color: rgba(255, 255, 255, 0.2);
-    --background-color: rgba(255, 255, 255, 0.05);
-    --hover-background-color: rgba(255, 255, 255, 0.15);
+    --border-color: rgba(74, 63, 102, 0.2);
+    --background-color: rgba(255, 255, 255, 0.5);
+    --hover-background-color: rgba(255, 255, 255, 0.8);
     display: inline-flex;
     align-items: center;
     justify-content: center;
