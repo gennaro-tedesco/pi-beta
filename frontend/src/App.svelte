@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { House, MapPin, Moon, RotateCw } from 'lucide-svelte'
+  import { tick } from 'svelte'
+  import { House, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
   import { Button, Message, Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
@@ -25,6 +26,8 @@
   ]
 
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
+  const weatherActionIconSize = 18
+  const currentLocationLabel = 'Use current IP location'
 
   let activeWidget: WidgetId | null = null
   let weatherScene: WeatherScene | null = null
@@ -48,6 +51,14 @@
     weatherViewRef?.refresh()
   }
 
+  async function handleCurrentLocation(): Promise<void> {
+    const wasCityPickerOpen = showCityPicker
+    selectedCoords = null
+    showCityPicker = false
+    await tick()
+    if (!wasCityPickerOpen) weatherViewRef?.refresh()
+  }
+
   function openCityPicker(): void {
     showCityPicker = true
   }
@@ -69,7 +80,7 @@
   class:screen--night={weatherScene?.night}
   style={weatherScene ? `background-image: ${weatherScene.gradient}` : ''}
 >
-  {#if weatherScene}
+  {#if weatherScene && !showCityPicker}
     <div class="sky" aria-hidden="true">
       {#if weatherScene.night}
         <Moon class="sky__moon" size={48} />
@@ -94,10 +105,13 @@
       {#if activeWidget === 'weather'}
         <div class="nav__actions">
           <Button ghost on:click={handleRefresh} aria-label="Refresh weather">
-            <RotateCw size={18} />
+            <RotateCw size={weatherActionIconSize} />
+          </Button>
+          <Button ghost on:click={handleCurrentLocation} aria-label={currentLocationLabel}>
+            <LocateFixed size={weatherActionIconSize} />
           </Button>
           <Button ghost on:click={openCityPicker} aria-label="Change city">
-            <MapPin size={18} />
+            <MapPin size={weatherActionIconSize} />
           </Button>
         </div>
       {/if}
@@ -111,6 +125,8 @@
           <Tile title={widget.title} on:toggle={() => maximize(widget.id)} />
         {/each}
       </div>
+    {:else if activeWidget === 'weather' && showCityPicker}
+      <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
     {:else if activeWidget === 'weather'}
       <WeatherView bind:this={weatherViewRef} coords={selectedCoords} on:scene={handleWeatherScene} />
     {:else}
@@ -118,10 +134,6 @@
     {/if}
   </div>
 </main>
-
-{#if showCityPicker}
-  <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
-{/if}
 
 <style>
   .screen {
