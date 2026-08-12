@@ -44,6 +44,7 @@
   .tile {
     display: flex;
     flex-direction: column;
+    gap: 1rem;
     background-color: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
@@ -64,9 +65,5 @@
 
   .tile__title {
     font-weight: 600;
-  }
-
-  .tile__content {
-    margin-top: 1rem;
   }
 </style>
