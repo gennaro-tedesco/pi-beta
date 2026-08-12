@@ -23,7 +23,6 @@ type Weather struct {
 	IsDay               bool      `json:"isDay"`
 	WindSpeed           float64   `json:"windSpeed"`
 	WindDirection       float64   `json:"windDirection"`
-	PressureMSL         float64   `json:"pressureMsl"`
 	RainProbability     int       `json:"rainProbability"`
 	UVIndex             float64   `json:"uvIndex"`
 	DailyTime           []string  `json:"dailyTime"`
@@ -55,7 +54,6 @@ type openMeteoResponse struct {
 		IsDay            int     `json:"is_day"`
 		WindSpeed10m     float64 `json:"wind_speed_10m"`
 		WindDirection10m float64 `json:"wind_direction_10m"`
-		PressureMSL      float64 `json:"pressure_msl"`
 		RainProbability  int     `json:"precipitation_probability"`
 	} `json:"current"`
 	Hourly struct {
@@ -101,7 +99,6 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		IsDay:               forecast.Current.IsDay == 1,
 		WindSpeed:           forecast.Current.WindSpeed10m,
 		WindDirection:       forecast.Current.WindDirection10m,
-		PressureMSL:         forecast.Current.PressureMSL,
 		RainProbability:     forecast.Current.RainProbability,
 		DailyTime:           forecast.Daily.Time,
 		DailyWeatherCode:    forecast.Daily.WeatherCode,
@@ -175,7 +172,7 @@ func fetchIPLocation() (ipLocation, error) {
 
 func fetchForecast(lat, lon float64) (openMeteoResponse, error) {
 	url := fmt.Sprintf(
-		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,pressure_msl,precipitation_probability&hourly=uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
+		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,precipitation_probability&hourly=uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
 		weatherForecastURL, lat, lon,
 	)
 

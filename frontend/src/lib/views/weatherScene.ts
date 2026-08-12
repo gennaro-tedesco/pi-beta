@@ -1,20 +1,13 @@
-import compass from '@bybas/weather-icons/production/fill/all/compass.svg'
-import pressureHigh from '@bybas/weather-icons/production/fill/all/pressure-high.svg'
-import pressureLow from '@bybas/weather-icons/production/fill/all/pressure-low.svg'
-import umbrella from '@bybas/weather-icons/production/fill/all/umbrella.svg'
+import rain from '@bybas/weather-icons/production/fill/all/rain.svg'
 import wind from '@bybas/weather-icons/production/fill/all/wind.svg'
-
-export interface AtmosphericAnimation {
-  label: string
-  source: string
-  rotation: number
-}
 
 export interface WeatherScene {
   label: string
   gradient: string
   night: boolean
-  animations: AtmosphericAnimation[]
+  windAnimation: string
+  windEffectCount: number
+  rainAnimation: string | null
 }
 
 interface ConditionGroup {
@@ -57,53 +50,43 @@ const conditionGroups: ConditionGroup[] = [
 ]
 
 const fallbackGroup = conditionGroups[1]
-const calmWindSpeed = 1
 const likelyRainProbability = 30
-const standardPressureMsl = 1013.25
-const noRotation = 0
-const highPressureLabel = 'High pressure'
-const lowPressureLabel = 'Low pressure'
-const windDirectionLabel = 'Wind direction'
-const windLabel = 'Wind'
-const rainExpectedLabel = 'Rain expected'
+const rainCodes = conditionGroups[3].codes
+const mediumWindSpeed = 20
+const strongWindSpeed = 39
+const lightWindEffectCount = 1
+const mediumWindEffectCount = 2
+const strongWindEffectCount = 3
 
-interface AtmosphericConditions {
+interface WeatherConditions {
   windSpeed: number
-  windDirection: number
-  pressureMsl: number
   rainProbability: number
 }
 
-function getAtmosphericAnimations(conditions: AtmosphericConditions): AtmosphericAnimation[] {
-  const animations: AtmosphericAnimation[] = [
-    {
-      label: conditions.pressureMsl >= standardPressureMsl ? highPressureLabel : lowPressureLabel,
-      source: conditions.pressureMsl >= standardPressureMsl ? pressureHigh : pressureLow,
-      rotation: noRotation
-    },
-    { label: windDirectionLabel, source: compass, rotation: conditions.windDirection }
-  ]
-
-  if (conditions.windSpeed > calmWindSpeed) {
-    animations.unshift({ label: windLabel, source: wind, rotation: noRotation })
+function getWindEffectCount(windSpeed: number): number {
+  if (windSpeed >= strongWindSpeed) {
+    return strongWindEffectCount
   }
-  if (conditions.rainProbability >= likelyRainProbability) {
-    animations.push({ label: rainExpectedLabel, source: umbrella, rotation: noRotation })
+  if (windSpeed >= mediumWindSpeed) {
+    return mediumWindEffectCount
   }
-
-  return animations
+  return lightWindEffectCount
 }
 
 export function getWeatherScene(
   code: number,
   isDay: boolean,
-  conditions: AtmosphericConditions
+  conditions: WeatherConditions
 ): WeatherScene {
   const group = conditionGroups.find((candidate) => candidate.codes.includes(code)) ?? fallbackGroup
+  const rainExpected = rainCodes.includes(code) || conditions.rainProbability >= likelyRainProbability
+
   return {
     label: group.label,
     gradient: group.gradient,
     night: !isDay,
-    animations: getAtmosphericAnimations(conditions)
+    windAnimation: wind,
+    windEffectCount: getWindEffectCount(conditions.windSpeed),
+    rainAnimation: rainExpected ? rain : null
   }
 }

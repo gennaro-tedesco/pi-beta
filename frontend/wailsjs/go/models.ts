@@ -7,7 +7,6 @@ export namespace main {
 	    isDay: boolean;
 	    windSpeed: number;
 	    windDirection: number;
-	    pressureMsl: number;
 	    rainProbability: number;
 	    uvIndex: number;
 	    dailyTime: string[];
@@ -27,7 +26,6 @@ export namespace main {
 	        this.isDay = source["isDay"];
 	        this.windSpeed = source["windSpeed"];
 	        this.windDirection = source["windDirection"];
-	        this.pressureMsl = source["pressureMsl"];
 	        this.rainProbability = source["rainProbability"];
 	        this.uvIndex = source["uvIndex"];
 	        this.dailyTime = source["dailyTime"];

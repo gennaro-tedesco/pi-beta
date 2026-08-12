@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte'
-  import { Droplets, Sun, Wind } from 'lucide-svelte'
+  import { Droplets, Sun } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
   import { Message } from '../components'
@@ -41,10 +41,8 @@
   onMount(loadWeather)
 
   $: scene = weather
-    ? getWeatherScene(weather.weatherCode, weather.isDay, {
+      ? getWeatherScene(weather.weatherCode, weather.isDay, {
         windSpeed: weather.windSpeed,
-        windDirection: weather.windDirection,
-        pressureMsl: weather.pressureMsl,
         rainProbability: weather.rainProbability
       })
     : null
@@ -80,7 +78,6 @@
 
       <div class="details">
         <div class="detail">
-          <Wind size={18} />
           <span>{weather.windSpeed} km/h</span>
         </div>
         <div class="detail">
