@@ -2,9 +2,10 @@
   import { tick } from 'svelte'
   import { scale } from 'svelte/transition'
   import { House, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
-  import { Button, Message, Tile } from './lib/components'
+  import { Button, Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
+  import PhotoSlideshow from './lib/views/PhotoSlideshow.svelte'
   import type { WeatherScene } from './lib/views/weatherScene'
   import cameraIllustration from './assets/images/camera-color.svg'
   import filmIllustration from './assets/images/film-frames-color.svg'
@@ -158,13 +159,8 @@
       <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
     {:else if activeWidget === 'weather'}
       <WeatherView bind:this={weatherViewRef} coords={selectedCoords} on:scene={handleWeatherScene} />
-    {:else}
-      <div
-        out:scale={{ duration: transitionDuration }}
-        in:scale={{ duration: transitionDuration, delay: transitionDuration }}
-      >
-        <Message variant="warning" message="Not implemented yet" />
-      </div>
+    {:else if activeWidget === 'photos'}
+      <PhotoSlideshow />
     {/if}
   </div>
 </main>
@@ -193,6 +189,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    pointer-events: none;
+  }
+
+  .nav :global(button) {
+    pointer-events: auto;
   }
 
   .nav__actions {
