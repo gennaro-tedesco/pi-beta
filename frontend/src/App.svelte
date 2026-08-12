@@ -25,7 +25,7 @@
     { top: 28, left: 92, delay: 1.5 }
   ]
 
-  const transitionDuration = 250
+  const transitionDuration = 1200
 
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
   const weatherActionIconSize = 18

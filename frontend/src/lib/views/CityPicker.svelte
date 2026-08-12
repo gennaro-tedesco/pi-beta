@@ -9,7 +9,7 @@
 
   const dispatch = createEventDispatcher<{ select: { lat: number; lon: number }; close: void }>()
 
-  const transitionDuration = 250
+  const transitionDuration = 1200
   const defaultZoom = 2
   const defaultCenter: L.LatLngExpression = [20, 0]
   const countryDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson'

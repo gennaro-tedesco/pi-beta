@@ -12,7 +12,7 @@
 
   const dispatch = createEventDispatcher<{ scene: WeatherScene | null }>()
 
-  const transitionDuration = 250
+  const transitionDuration = 1200
 
   let weather: main.Weather | null = null
   let error: string | null = null
