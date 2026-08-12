@@ -5,6 +5,8 @@
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
   import type { WeatherScene } from './lib/views/weatherScene'
+  import cameraIllustration from './assets/images/camera-color.svg'
+  import filmIllustration from './assets/images/film-frames-color.svg'
   import weatherTileAnimation from '@bybas/weather-icons/production/fill/all/partly-cloudy-day-rain.svg'
 
   type WidgetId = 'photos' | 'weather'
@@ -117,7 +119,30 @@
   <div class="content">
     {#if activeWidget === null}
       <div class="tiles">
-        <Tile title="Photos" on:toggle={() => maximize('photos')} />
+        <Tile title="Photos" on:toggle={() => maximize('photos')}>
+          <div slot="visual" class="tile__slideshow" aria-hidden="true">
+            <img class="tile__ambient tile__ambient--camera" src={cameraIllustration} alt="" />
+            <img class="tile__ambient tile__ambient--film" src={filmIllustration} alt="" />
+            <div class="tile__landscapes">
+              <div class="tile__landscape tile__landscape--alpine">
+                <span class="tile__orb tile__orb--sun" />
+                <span class="tile__ridge tile__ridge--far" />
+                <span class="tile__ridge tile__ridge--near" />
+              </div>
+              <div class="tile__landscape tile__landscape--coast">
+                <span class="tile__orb tile__orb--moon" />
+                <span class="tile__wave tile__wave--far" />
+                <span class="tile__wave tile__wave--near" />
+              </div>
+              <div class="tile__landscape tile__landscape--meadow">
+                <span class="tile__cloud tile__cloud--one" />
+                <span class="tile__cloud tile__cloud--two" />
+                <span class="tile__hill tile__hill--far" />
+                <span class="tile__hill tile__hill--near" />
+              </div>
+            </div>
+          </div>
+        </Tile>
         <Tile title="Weather" on:toggle={() => maximize('weather')}>
           <img slot="visual" class="tile__weather-scene" src={weatherTileAnimation} alt="" />
         </Tile>
@@ -251,6 +276,277 @@
     flex: 0 0 auto;
     height: var(--tile-height);
     width: var(--tile-width);
+  }
+
+  .tiles :global(.tile__slideshow) {
+    --ambient-edge-offset: 1%;
+    --ambient-opacity: 0.72;
+    --ambient-size: clamp(4.5rem, 10vw, 7rem);
+    --ambient-travel: 0.5rem;
+    --ambient-phase-delay: -3s;
+    --ambient-duration: 6s;
+    --landscape-duration: 15s;
+    --landscape-radius: 1rem;
+    --landscape-shadow: 0 1rem 2.5rem rgba(74, 63, 102, 0.2);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .tiles :global(.tile__ambient) {
+    position: absolute;
+    width: var(--ambient-size);
+    height: var(--ambient-size);
+    object-fit: contain;
+    opacity: var(--ambient-opacity);
+    animation: ambientFloat var(--ambient-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__ambient--camera) {
+    top: var(--ambient-edge-offset);
+    left: var(--ambient-edge-offset);
+  }
+
+  .tiles :global(.tile__ambient--film) {
+    right: var(--ambient-edge-offset);
+    bottom: var(--ambient-edge-offset);
+    animation-delay: var(--ambient-phase-delay);
+  }
+
+  .tiles :global(.tile__landscapes) {
+    position: relative;
+    z-index: 1;
+    width: min(92%, 18rem);
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--landscape-radius);
+    box-shadow: var(--landscape-shadow);
+  }
+
+  .tiles :global(.tile__landscape) {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0;
+    animation: landscapeSequence var(--landscape-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__landscape--alpine) {
+    background: linear-gradient(180deg, #83bfd1 0%, #f3cfaa 62%, #486b61 63%, #294a43 100%);
+  }
+
+  .tiles :global(.tile__landscape--coast) {
+    background: linear-gradient(180deg, #533c70 0%, #d17a86 54%, #345f76 55%, #173d50 100%);
+    animation-delay: calc(var(--landscape-duration) / -3);
+  }
+
+  .tiles :global(.tile__landscape--meadow) {
+    background: linear-gradient(180deg, #8fc9d5 0%, #d8ead9 62%, #75a767 63%, #487b50 100%);
+    animation-delay: calc(var(--landscape-duration) / -1.5);
+  }
+
+  .tiles :global(.tile__orb) {
+    position: absolute;
+    width: 16%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+  }
+
+  .tiles :global(.tile__orb--sun) {
+    top: 16%;
+    right: 18%;
+    background: #fff0b5;
+    box-shadow: 0 0 2rem rgba(255, 240, 181, 0.8);
+    animation: sunDrift var(--landscape-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__orb--moon) {
+    top: 14%;
+    left: 18%;
+    background: #f8e8cf;
+    box-shadow: 0 0 1.5rem rgba(248, 232, 207, 0.55);
+    animation: moonDrift var(--landscape-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__ridge) {
+    position: absolute;
+    bottom: -24%;
+    aspect-ratio: 1;
+    transform: rotate(45deg);
+    animation: ridgeDrift var(--landscape-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__ridge--far) {
+    left: -2%;
+    width: 72%;
+    background: #67847b;
+  }
+
+  .tiles :global(.tile__ridge--near) {
+    right: -12%;
+    width: 82%;
+    background: #365b52;
+    animation-direction: reverse;
+  }
+
+  .tiles :global(.tile__wave) {
+    position: absolute;
+    right: -10%;
+    left: -10%;
+    height: 32%;
+    border-radius: 50%;
+    animation: waveDrift var(--landscape-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__wave--far) {
+    bottom: 2%;
+    background: #3f7285;
+  }
+
+  .tiles :global(.tile__wave--near) {
+    bottom: -14%;
+    background: #214d62;
+    animation-direction: reverse;
+  }
+
+  .tiles :global(.tile__hill) {
+    position: absolute;
+    width: 90%;
+    aspect-ratio: 2 / 1;
+    border-radius: 50%;
+    animation: hillDrift var(--landscape-duration) ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__hill--far) {
+    bottom: -8%;
+    left: -20%;
+    background: #66945c;
+  }
+
+  .tiles :global(.tile__hill--near) {
+    right: -24%;
+    bottom: -18%;
+    background: #477c50;
+    animation-direction: reverse;
+  }
+
+  .tiles :global(.tile__cloud) {
+    position: absolute;
+    width: 22%;
+    height: 7%;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    animation: cloudDrift var(--landscape-duration) linear infinite;
+  }
+
+  .tiles :global(.tile__cloud--one) {
+    top: 22%;
+    left: 16%;
+  }
+
+  .tiles :global(.tile__cloud--two) {
+    top: 36%;
+    right: 14%;
+    width: 14%;
+    animation-direction: reverse;
+  }
+
+  @keyframes landscapeSequence {
+    0%,
+    28% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    34%,
+    94% {
+      opacity: 0;
+      transform: scale(1.04);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes sunDrift {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(-20%, 18%);
+    }
+  }
+
+  @keyframes moonDrift {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    50% {
+      transform: translate(24%, -12%);
+    }
+  }
+
+  @keyframes ridgeDrift {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 4% -2%;
+    }
+  }
+
+  @keyframes waveDrift {
+    0%,
+    100% {
+      translate: -3% 0;
+    }
+    50% {
+      translate: 3% -8%;
+    }
+  }
+
+  @keyframes hillDrift {
+    0%,
+    100% {
+      translate: -2% 0;
+    }
+    50% {
+      translate: 2% -4%;
+    }
+  }
+
+  @keyframes cloudDrift {
+    0%,
+    100% {
+      translate: -18% 0;
+    }
+    50% {
+      translate: 18% 0;
+    }
+  }
+
+  @keyframes ambientFloat {
+    0%,
+    100% {
+      transform: translateY(0) rotate(-2deg);
+    }
+    50% {
+      transform: translateY(calc(var(--ambient-travel) * -1)) rotate(2deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tiles :global(.tile__ambient),
+    .tiles :global(.tile__landscape),
+    .tiles :global(.tile__landscape span) {
+      animation-play-state: paused;
+    }
   }
 
   .tiles :global(.tile__weather-scene) {
