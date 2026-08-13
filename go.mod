@@ -1,4 +1,4 @@
-module pi-board
+module pi-beta
 
 go 1.23
 

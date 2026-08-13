@@ -11,7 +11,7 @@ import (
 const ipLocationURL = "http://ip-api.com/json/"
 const weatherForecastURL = "https://api.open-meteo.com/v1/forecast"
 const reverseGeocodeURL = "https://nominatim.openstreetmap.org/reverse"
-const reverseGeocodeUserAgent = "pi-board-weather-dashboard"
+const reverseGeocodeUserAgent = "pi-beta-weather-dashboard"
 const reverseGeocodeZoom = 10
 const weatherHTTPTimeout = 5 * time.Second
 const invalidUVDataMessage = "forecast response does not contain UV data for the current time"
