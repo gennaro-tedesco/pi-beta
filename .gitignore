@@ -6,3 +6,4 @@ images/*
 !images/logo.png
 /pi-beta
 /frontend/pi-beta
+/.mcp_data/
