@@ -8,6 +8,7 @@ import (
 )
 
 const photosDir = "images"
+const logoFilename = "logo.png"
 
 var photoExtensions = map[string]bool{
 	".jpg":  true,
@@ -26,7 +27,7 @@ func (a *App) ListPhotos() ([]string, error) {
 
 	var photos []string
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || entry.Name() == logoFilename {
 			continue
 		}
 		if photoExtensions[strings.ToLower(filepath.Ext(entry.Name()))] {

@@ -3,5 +3,6 @@ frontend/dist
 frontend/node_modules
 images/*
 !images/.gitkeep
+!images/logo.png
 /pi-board
 /frontend/pi-board
