@@ -12,6 +12,11 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+const (
+	windowWidth  = 1024
+	windowHeight = 768
+)
+
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
@@ -22,13 +27,13 @@ func main() {
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "pi-beta",
-		Width:  1024,
-		Height: 768,
+		Width:  windowWidth,
+		Height: windowHeight,
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
 			Handler: photosHandler,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		BackgroundColour: &colorBackground,
 		Bind: []interface{}{
 			app,
 		},
