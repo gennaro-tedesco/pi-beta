@@ -3,3 +3,5 @@ frontend/dist
 frontend/node_modules
 images/*
 !images/.gitkeep
+/pi-board
+/frontend/pi-board
