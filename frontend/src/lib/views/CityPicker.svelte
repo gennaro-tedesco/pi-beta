@@ -1,19 +1,116 @@
+<script context="module" lang="ts">
+  import type { FeatureCollection, MultiPolygon, Point, Polygon } from 'geojson'
+
+  const countryDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson'
+  const cityDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_10m_populated_places_simple.geojson'
+
+  interface CityProperties {
+    adm0name: string
+    min_zoom: number
+    name: string
+    pop_max: number
+  }
+
+  type CountryData = FeatureCollection<Polygon | MultiPolygon>
+  type CityData = FeatureCollection<Point, CityProperties>
+  type CityFeature = CityData['features'][number]
+  type SearchableCity = { feature: CityFeature; normalizedName: string }
+
+  let countryDataPromise: Promise<CountryData> | null = null
+  let cityDataPromise: Promise<CityData> | null = null
+  let searchableCities: SearchableCity[] = []
+  let citySearchIndex = new Map<string, SearchableCity[]>()
+  let cityBuckets = new Map<string, CityFeature[]>()
+
+  const coordinateBucketSize = 10
+  const latitudeOffset = 90
+  const longitudeOffset = 180
+  const maximumSearchIndexLength = 3
+
+  function coordinateBucket(value: number, offset: number): number {
+    return Math.floor((value + offset) / coordinateBucketSize)
+  }
+
+  function bucketKey(latitudeBucket: number, longitudeBucket: number): string {
+    return `${latitudeBucket}:${longitudeBucket}`
+  }
+
+  function prepareCityData(data: CityData): CityData {
+    searchableCities = data.features.map((feature) => ({
+      feature,
+      normalizedName: feature.properties.name.toLocaleLowerCase()
+    }))
+    citySearchIndex = new Map<string, SearchableCity[]>()
+    cityBuckets = new Map<string, CityFeature[]>()
+
+    for (const searchableCity of searchableCities) {
+      const { feature, normalizedName } = searchableCity
+      const searchKeys = new Set<string>()
+      for (let length = 1; length <= maximumSearchIndexLength; length += 1) {
+        for (let start = 0; start <= normalizedName.length - length; start += 1) {
+          searchKeys.add(normalizedName.slice(start, start + length))
+        }
+      }
+      for (const searchKey of searchKeys) {
+        const candidates = citySearchIndex.get(searchKey)
+        if (candidates) candidates.push(searchableCity)
+        else citySearchIndex.set(searchKey, [searchableCity])
+      }
+
+      const [longitude, latitude] = feature.geometry.coordinates
+      const key = bucketKey(
+        coordinateBucket(latitude, latitudeOffset),
+        coordinateBucket(longitude, longitudeOffset)
+      )
+      const bucket = cityBuckets.get(key)
+      if (bucket) bucket.push(feature)
+      else cityBuckets.set(key, [feature])
+    }
+
+    return data
+  }
+
+  function fetchJson<T>(url: string): Promise<T> {
+    return fetch(url).then((response) => {
+      if (!response.ok) throw new Error(`Request to ${url} failed: ${response.status}`)
+      return response.json() as Promise<T>
+    })
+  }
+
+  function loadCountryData(): Promise<CountryData> {
+    if (countryDataPromise === null) {
+      countryDataPromise = fetchJson<CountryData>(countryDataUrl)
+      countryDataPromise.catch(() => {
+        countryDataPromise = null
+      })
+    }
+    return countryDataPromise
+  }
+
+  function loadCityData(): Promise<CityData> {
+    if (cityDataPromise === null) {
+      cityDataPromise = fetchJson<CityData>(cityDataUrl).then(prepareCityData)
+      cityDataPromise.catch(() => {
+        cityDataPromise = null
+      })
+    }
+    return cityDataPromise
+  }
+</script>
+
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { scale } from 'svelte/transition'
   import L from 'leaflet'
-  import type { FeatureCollection, MultiPolygon, Point, Polygon } from 'geojson'
   import 'leaflet/dist/leaflet.css'
   import { X } from 'lucide-svelte'
-  import { Button } from '../components'
+  import { Button, Message } from '../components'
+  import { transitionDuration } from '../transition'
 
   const dispatch = createEventDispatcher<{ select: { lat: number; lon: number }; close: void }>()
 
-  const transitionDuration = 1200
   const defaultZoom = 2
   const defaultCenter: L.LatLngExpression = [20, 0]
-  const countryDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_50m_admin_0_countries.geojson'
-  const cityDataUrl = 'https://cdn.jsdelivr.net/gh/nvkelso/natural-earth-vector@master/geojson/ne_10m_populated_places_simple.geojson'
   const worldBounds = L.latLngBounds([-85, -180], [85, 180])
   const maxBoundsViscosity = 1
   const countryStyle: L.PathOptions = {
@@ -39,22 +136,18 @@
   const maxSearchResults = 8
   const citySearchLabel = 'Search cities'
   const citySearchPlaceholder = 'Type a city name'
-
-  interface CityProperties {
-    adm0name: string
-    min_zoom: number
-    name: string
-    pop_max: number
-  }
-
-  type CountryData = FeatureCollection<Polygon | MultiPolygon>
-  type CityData = FeatureCollection<Point, CityProperties>
+  const searchDebounceMs = 150
+  const cityDataErrorMessage = 'Unable to load city data. Close and reopen the city picker to retry.'
 
   let mapContainer: HTMLDivElement
   let map: L.Map | null = null
   let cityData: CityData | null = null
   let cityLayer: L.LayerGroup | null = null
   let cityQuery = ''
+  let debouncedCityQuery = ''
+  let cityDataError: string | null = null
+  let searchDebounceTimer: ReturnType<typeof setTimeout>
+  const visibleMarkers = new Map<string, L.CircleMarker>()
 
   function selectCity(feature: CityData['features'][number]): void {
     const [lon, lat] = feature.geometry.coordinates
@@ -65,15 +158,27 @@
     const normalizedQuery = query.trim().toLocaleLowerCase()
     if (normalizedQuery === '' || data === null) return []
 
-    return data.features
-      .filter((feature) => feature.properties.name.toLocaleLowerCase().includes(normalizedQuery))
-      .sort((first, second) => {
-        const firstName = first.properties.name.toLocaleLowerCase()
-        const secondName = second.properties.name.toLocaleLowerCase()
-        const prefixDifference = Number(secondName.startsWith(normalizedQuery)) - Number(firstName.startsWith(normalizedQuery))
-        return prefixDifference || second.properties.pop_max - first.properties.pop_max
+    const matches: SearchableCity[] = []
+    const searchKey = normalizedQuery.slice(0, maximumSearchIndexLength)
+    const candidates = citySearchIndex.get(searchKey) ?? []
+    for (const candidate of candidates) {
+      if (!candidate.normalizedName.includes(normalizedQuery)) continue
+
+      const insertionIndex = matches.findIndex((match) => {
+        const prefixDifference = Number(candidate.normalizedName.startsWith(normalizedQuery))
+          - Number(match.normalizedName.startsWith(normalizedQuery))
+        return prefixDifference > 0
+          || (prefixDifference === 0 && candidate.feature.properties.pop_max > match.feature.properties.pop_max)
       })
-      .slice(0, maxSearchResults)
+      matches.splice(insertionIndex < 0 ? matches.length : insertionIndex, 0, candidate)
+      if (matches.length > maxSearchResults) matches.pop()
+    }
+
+    return matches.map((match) => match.feature)
+  }
+
+  function cityKey(feature: CityData['features'][number]): string {
+    return feature.properties.name + feature.geometry.coordinates.join(',')
   }
 
   function renderCities(): void {
@@ -81,18 +186,38 @@
 
     const bounds = map.getBounds()
     const zoom = map.getZoom()
-    cityLayer.clearLayers()
+    const nextVisible = new Set<string>()
+    const southBucket = coordinateBucket(bounds.getSouth(), latitudeOffset)
+    const northBucket = coordinateBucket(bounds.getNorth(), latitudeOffset)
+    const westBucket = coordinateBucket(bounds.getWest(), longitudeOffset)
+    const eastBucket = coordinateBucket(bounds.getEast(), longitudeOffset)
 
-    for (const feature of cityData.features) {
-      if (feature.properties.min_zoom > zoom) continue
+    for (let latitudeBucket = southBucket; latitudeBucket <= northBucket; latitudeBucket += 1) {
+      for (let longitudeBucket = westBucket; longitudeBucket <= eastBucket; longitudeBucket += 1) {
+        const bucket = cityBuckets.get(bucketKey(latitudeBucket, longitudeBucket)) ?? []
+        for (const feature of bucket) {
+          if (feature.properties.min_zoom > zoom) continue
 
-      const [lon, lat] = feature.geometry.coordinates
-      if (!bounds.contains([lat, lon])) continue
+          const [lon, lat] = feature.geometry.coordinates
+          if (!bounds.contains([lat, lon])) continue
 
-      L.circleMarker([lat, lon], cityStyle)
-        .bindTooltip(feature.properties.name, cityTooltipOptions)
-        .on('click', () => selectCity(feature))
-        .addTo(cityLayer)
+          const key = cityKey(feature)
+          nextVisible.add(key)
+          if (visibleMarkers.has(key)) continue
+
+          const marker = L.circleMarker([lat, lon], cityStyle)
+            .bindTooltip(feature.properties.name, cityTooltipOptions)
+            .on('click', () => selectCity(feature))
+            .addTo(cityLayer)
+          visibleMarkers.set(key, marker)
+        }
+      }
+    }
+
+    for (const [key, marker] of visibleMarkers) {
+      if (nextVisible.has(key)) continue
+      marker.remove()
+      visibleMarkers.delete(key)
     }
   }
 
@@ -101,28 +226,37 @@
     cityLayer = L.layerGroup().addTo(map)
     map.on('moveend zoomend', renderCities)
 
-    Promise.all([
-      fetch(countryDataUrl).then((response) => response.json() as Promise<CountryData>),
-      fetch(cityDataUrl).then((response) => response.json() as Promise<CityData>)
-    ]).then(([countryData, loadedCityData]) => {
-      if (map === null) return
-      L.geoJSON(countryData, {
-        interactive: false,
-        style: countryStyle,
-        filter: (feature) => feature.properties.CONTINENT !== 'Antarctica'
-      }).addTo(map)
-      cityData = loadedCityData
-      renderCities()
-    })
+    Promise.all([loadCountryData(), loadCityData()])
+      .then(([countryData, loadedCityData]) => {
+        if (map === null) return
+        L.geoJSON(countryData, {
+          interactive: false,
+          style: countryStyle,
+          filter: (feature) => feature.properties.CONTINENT !== 'Antarctica'
+        }).addTo(map)
+        cityData = loadedCityData
+        renderCities()
+      })
+      .catch(() => {
+        cityDataError = cityDataErrorMessage
+      })
 
     setTimeout(() => map?.invalidateSize(), transitionDuration + 50)
   })
 
   onDestroy(() => {
     map?.remove()
+    clearTimeout(searchDebounceTimer)
   })
 
-  $: citySearchResults = findCities(cityQuery, cityData)
+  $: {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(() => {
+      debouncedCityQuery = cityQuery
+    }, searchDebounceMs)
+  }
+
+  $: citySearchResults = findCities(debouncedCityQuery, cityData)
 </script>
 
 <div
@@ -146,7 +280,7 @@
       </form>
       {#if citySearchResults.length > 0}
         <div class="picker__results" role="listbox" aria-label={citySearchLabel}>
-          {#each citySearchResults as city (city.properties.name + city.geometry.coordinates.join(','))}
+          {#each citySearchResults as city (cityKey(city))}
             <Button ghost on:click={() => selectCity(city)} role="option">
               <span>{city.properties.name}</span>
               <span class="picker__country">{city.properties.adm0name}</span>
@@ -159,6 +293,9 @@
       <X size={20} />
     </Button>
   </div>
+  {#if cityDataError}
+    <Message variant="error" message={cityDataError} />
+  {/if}
   <div class="picker__map" bind:this={mapContainer}></div>
 </div>
 

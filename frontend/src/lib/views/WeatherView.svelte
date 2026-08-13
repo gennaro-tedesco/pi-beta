@@ -7,12 +7,11 @@
   import { Message } from '../components'
   import { getWeatherIcon } from './weatherIcon'
   import { getWeatherScene, type WeatherScene } from './weatherScene'
+  import { transitionDuration } from '../transition'
 
   export let coords: { lat: number; lon: number } | null = null
 
   const dispatch = createEventDispatcher<{ scene: WeatherScene | null }>()
-
-  const transitionDuration = 1200
 
   let weather: main.Weather | null = null
   let error: string | null = null
@@ -51,7 +50,6 @@
     : null
   $: iconUrl = weather ? getWeatherIcon(weather.weatherCode, weather.isDay) : null
   $: dispatch('scene', scene)
-  $: if (coords) loadWeather()
 </script>
 
 <div

@@ -7,6 +7,7 @@
   import CityPicker from './lib/views/CityPicker.svelte'
   import PhotoSlideshow from './lib/views/PhotoSlideshow.svelte'
   import type { WeatherScene } from './lib/views/weatherScene'
+  import { transitionDuration } from './lib/transition'
   import cameraIllustration from './assets/images/camera-color.svg'
   import filmIllustration from './assets/images/film-frames-color.svg'
   import weatherTileAnimation from '@bybas/weather-icons/production/fill/all/partly-cloudy-day-rain.svg'
@@ -24,8 +25,6 @@
     { top: 34, left: 45, delay: 0.9 },
     { top: 28, left: 92, delay: 1.5 }
   ]
-
-  const transitionDuration = 1200
 
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
   const weatherActionIconSize = 18

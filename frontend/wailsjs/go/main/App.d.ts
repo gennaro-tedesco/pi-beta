@@ -6,4 +6,4 @@ export function GetWeather():Promise<main.Weather>;
 
 export function GetWeatherAt(arg1:number,arg2:number):Promise<main.Weather>;
 
-export function Greet(arg1:string):Promise<string>;
+export function ListPhotos():Promise<Array<string>>;

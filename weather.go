@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -13,6 +14,7 @@ const reverseGeocodeURL = "https://nominatim.openstreetmap.org/reverse"
 const reverseGeocodeUserAgent = "pi-board-weather-dashboard"
 const reverseGeocodeZoom = 10
 const weatherHTTPTimeout = 5 * time.Second
+const invalidUVDataMessage = "forecast response does not contain UV data for the current time"
 
 var weatherHTTPClient = &http.Client{Timeout: weatherHTTPTimeout}
 
@@ -22,7 +24,6 @@ type Weather struct {
 	WeatherCode         int       `json:"weatherCode"`
 	IsDay               bool      `json:"isDay"`
 	WindSpeed           float64   `json:"windSpeed"`
-	WindDirection       float64   `json:"windDirection"`
 	RainProbability     int       `json:"rainProbability"`
 	UVIndex             float64   `json:"uvIndex"`
 	DailyTime           []string  `json:"dailyTime"`
@@ -48,13 +49,12 @@ type nominatimResponse struct {
 
 type openMeteoResponse struct {
 	Current struct {
-		Time             string  `json:"time"`
-		Temperature2m    float64 `json:"temperature_2m"`
-		WeatherCode      int     `json:"weather_code"`
-		IsDay            int     `json:"is_day"`
-		WindSpeed10m     float64 `json:"wind_speed_10m"`
-		WindDirection10m float64 `json:"wind_direction_10m"`
-		RainProbability  int     `json:"precipitation_probability"`
+		Time            string  `json:"time"`
+		Temperature2m   float64 `json:"temperature_2m"`
+		WeatherCode     int     `json:"weather_code"`
+		IsDay           int     `json:"is_day"`
+		WindSpeed10m    float64 `json:"wind_speed_10m"`
+		RainProbability int     `json:"precipitation_probability"`
 	} `json:"current"`
 	Hourly struct {
 		Time    []string  `json:"time"`
@@ -98,7 +98,6 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		WeatherCode:         forecast.Current.WeatherCode,
 		IsDay:               forecast.Current.IsDay == 1,
 		WindSpeed:           forecast.Current.WindSpeed10m,
-		WindDirection:       forecast.Current.WindDirection10m,
 		RainProbability:     forecast.Current.RainProbability,
 		DailyTime:           forecast.Daily.Time,
 		DailyWeatherCode:    forecast.Daily.WeatherCode,
@@ -106,10 +105,15 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		DailyTemperatureMin: forecast.Daily.Temperature2mMin,
 	}
 
-	currentIndex := indexOf(forecast.Hourly.Time, forecast.Current.Time)
-	if currentIndex >= 0 {
-		result.UVIndex = forecast.Hourly.UVIndex[currentIndex]
+	currentHour := forecast.Current.Time
+	if len(currentHour) >= 13 {
+		currentHour = currentHour[:13] + ":00"
 	}
+	currentIndex := indexOf(forecast.Hourly.Time, currentHour)
+	if currentIndex < 0 || currentIndex >= len(forecast.Hourly.UVIndex) {
+		return Weather{}, errors.New(invalidUVDataMessage)
+	}
+	result.UVIndex = forecast.Hourly.UVIndex[currentIndex]
 
 	return result, nil
 }
@@ -172,7 +176,7 @@ func fetchIPLocation() (ipLocation, error) {
 
 func fetchForecast(lat, lon float64) (openMeteoResponse, error) {
 	url := fmt.Sprintf(
-		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,precipitation_probability&hourly=uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
+		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
 		weatherForecastURL, lat, lon,
 	)
 

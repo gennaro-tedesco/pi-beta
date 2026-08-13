@@ -2,13 +2,11 @@
   import { createEventDispatcher } from 'svelte'
 
   export let title: string
-  export let expanded: boolean = false
 
-  const dispatch = createEventDispatcher<{ toggle: boolean }>()
+  const dispatch = createEventDispatcher<{ toggle: void }>()
 
   function handleActivate(): void {
-    expanded = !expanded
-    dispatch('toggle', expanded)
+    dispatch('toggle')
   }
 
   function handleKeydown(event: KeyboardEvent): void {
@@ -19,31 +17,10 @@
   }
 </script>
 
-<div
-  class="tile"
-  class:tile--expanded={expanded}
-  role="button"
-  tabindex="0"
-  aria-label={title}
-  aria-expanded={expanded}
-  on:click={handleActivate}
-  on:keydown={handleKeydown}
->
-  <div class="tile__header">
-    <slot name="icon" />
+<div class="tile" role="button" tabindex="0" aria-label={title} on:click={handleActivate} on:keydown={handleKeydown}>
+  <div class="tile__visual">
+    <slot name="visual" />
   </div>
-
-  {#if !expanded}
-    <div class="tile__visual">
-      <slot name="visual" />
-    </div>
-  {/if}
-
-  {#if expanded}
-    <div class="tile__content">
-      <slot />
-    </div>
-  {/if}
 </div>
 
 <style>
@@ -66,15 +43,5 @@
     align-items: center;
     justify-content: center;
     min-height: 0;
-  }
-
-  .tile--expanded {
-    border-color: rgba(74, 63, 102, 0.4);
-  }
-
-  .tile__header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
 </style>

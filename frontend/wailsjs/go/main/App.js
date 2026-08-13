@@ -10,6 +10,6 @@ export function GetWeatherAt(arg1, arg2) {
   return window['go']['main']['App']['GetWeatherAt'](arg1, arg2);
 }
 
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
+export function ListPhotos() {
+  return window['go']['main']['App']['ListPhotos']();
 }

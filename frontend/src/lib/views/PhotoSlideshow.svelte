@@ -1,17 +1,15 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { fade, scale } from 'svelte/transition'
   import { Rabbit, Turtle } from 'lucide-svelte'
+  import { transitionDuration } from '../transition'
+  import { ListPhotos } from '../../../wailsjs/go/main/App'
 
-  const transitionDuration = 1200
   const minSlideDuration = 2000
   const maxSlideDuration = 12000
   const swipeThreshold = 60
 
-  const photos = Object.values(
-    import.meta.glob('../../assets/images/gallery/*.jpg', { eager: true, import: 'default' })
-  ) as string[]
-
+  let photos: string[] = []
   let slideDuration = 6000
   let activeIndex = 0
   let timer: ReturnType<typeof setInterval>
@@ -19,6 +17,7 @@
 
   function restartTimer(): void {
     clearInterval(timer)
+    if (photos.length === 0) return
     timer = setInterval(() => {
       activeIndex = (activeIndex + 1) % photos.length
     }, slideDuration)
@@ -37,7 +36,7 @@
   }
 
   function handleDragEnd(event: MouseEvent | TouchEvent): void {
-    if (dragStartX === null) return
+    if (dragStartX === null || photos.length === 0) return
     const deltaX = getClientX(event) - dragStartX
     dragStartX = null
     if (deltaX <= -swipeThreshold) {
@@ -46,6 +45,11 @@
       activeIndex = (activeIndex - 1 + photos.length) % photos.length
     }
   }
+
+  onMount(async () => {
+    const names = await ListPhotos()
+    photos = names.map((name) => `/images/${name}`)
+  })
 
   $: slideDuration, restartTimer()
 
@@ -61,6 +65,10 @@
   on:touchstart={handleDragStart}
   on:touchend={handleDragEnd}
 >
+  {#if photos.length === 0}
+    <p class="slideshow__empty">Add photos to the images folder to start the slideshow</p>
+  {/if}
+
   {#each photos as photo, index (photo)}
     {#if index === activeIndex}
       <img
@@ -73,24 +81,26 @@
     {/if}
   {/each}
 
-  <div
-    class="slideshow__controls"
-    on:mousedown|stopPropagation
-    on:mouseup|stopPropagation
-    on:touchstart|stopPropagation
-    on:touchend|stopPropagation
-  >
-    <Rabbit size={18} />
-    <input
-      type="range"
-      min={minSlideDuration}
-      max={maxSlideDuration}
-      step="500"
-      bind:value={slideDuration}
-      aria-label="Slide transition speed"
-    />
-    <Turtle size={18} />
-  </div>
+  {#if photos.length > 1}
+    <div
+      class="slideshow__controls"
+      on:mousedown|stopPropagation
+      on:mouseup|stopPropagation
+      on:touchstart|stopPropagation
+      on:touchend|stopPropagation
+    >
+      <Rabbit size={18} />
+      <input
+        type="range"
+        min={minSlideDuration}
+        max={maxSlideDuration}
+        step="500"
+        bind:value={slideDuration}
+        aria-label="Slide transition speed"
+      />
+      <Turtle size={18} />
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -100,6 +110,18 @@
     z-index: 0;
     overflow: hidden;
     touch-action: none;
+  }
+
+  .slideshow__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0 2rem;
+    text-align: center;
+    color: #4a3f66;
   }
 
   .slideshow__photo {
