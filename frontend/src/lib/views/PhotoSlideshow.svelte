@@ -8,6 +8,7 @@
   const minSlideDuration = 2000
   const maxSlideDuration = 12000
   const swipeThreshold = 60
+  const speedIconSize = 12
 
   let photos: string[] = []
   let slideDuration = 6000
@@ -89,8 +90,9 @@
       on:touchstart|stopPropagation
       on:touchend|stopPropagation
     >
-      <Rabbit size={18} />
+      <Rabbit size={speedIconSize} />
       <input
+        class="slideshow__speed"
         type="range"
         min={minSlideDuration}
         max={maxSlideDuration}
@@ -98,7 +100,7 @@
         bind:value={slideDuration}
         aria-label="Slide transition speed"
       />
-      <Turtle size={18} />
+      <Turtle size={speedIconSize} />
     </div>
   {/if}
 </div>
@@ -135,6 +137,11 @@
   }
 
   .slideshow__controls {
+    --slideshow-controls-gap: 0.375rem;
+    --slideshow-controls-padding-y: 0.25rem;
+    --slideshow-controls-padding-x: 0.625rem;
+    --slideshow-controls-fade-color: rgba(255, 255, 255, 0.55);
+    --slideshow-controls-fade-extent: 70%;
     position: absolute;
     z-index: 2;
     top: 1.5rem;
@@ -142,12 +149,39 @@
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    border: 1px solid rgba(74, 63, 102, 0.2);
-    background-color: rgba(255, 255, 255, 0.5);
+    gap: var(--slideshow-controls-gap);
+    padding: var(--slideshow-controls-padding-y) var(--slideshow-controls-padding-x);
+    border: none;
+    background: radial-gradient(ellipse, var(--slideshow-controls-fade-color) 0%, transparent var(--slideshow-controls-fade-extent));
     color: #4a3f66;
     touch-action: auto;
+  }
+
+  .slideshow__speed {
+    --slideshow-speed-width: 4rem;
+    --slideshow-speed-track-height: 3px;
+    --slideshow-speed-thumb-size: 10px;
+    width: var(--slideshow-speed-width);
+    height: var(--slideshow-speed-thumb-size);
+    margin: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+
+  .slideshow__speed::-webkit-slider-runnable-track {
+    height: var(--slideshow-speed-track-height);
+    border-radius: 999px;
+    background-color: rgba(74, 63, 102, 0.35);
+  }
+
+  .slideshow__speed::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--slideshow-speed-thumb-size);
+    height: var(--slideshow-speed-thumb-size);
+    border-radius: 50%;
+    background-color: #4a3f66;
+    margin-top: calc((var(--slideshow-speed-track-height) - var(--slideshow-speed-thumb-size)) / 2);
+    cursor: pointer;
   }
 </style>

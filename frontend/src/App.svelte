@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { House, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
+  import { LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
   import { Button, Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
@@ -29,6 +29,7 @@
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
   const weatherActionIconSize = 18
   const currentLocationLabel = 'Use current IP location'
+  const homeLogoSrc = '/images/logo.png'
 
   let activeWidget: WidgetId | null = null
   let weatherScene: WeatherScene | null = null
@@ -101,7 +102,7 @@
   {#if activeWidget !== null}
     <div class="nav">
       <Button ghost on:click={goHome} aria-label="Home">
-        <House />
+        <img class="nav__logo" src={homeLogoSrc} alt="" />
       </Button>
       {#if activeWidget === 'weather'}
         <div class="nav__actions">
@@ -198,6 +199,19 @@
   .nav__actions {
     display: flex;
     gap: 0.5rem;
+  }
+
+  .nav > :global(button) {
+    --nav-home-button-size: 3rem;
+    width: var(--nav-home-button-size);
+    height: var(--nav-home-button-size);
+    padding: 0;
+  }
+
+  .nav__logo {
+    --nav-logo-fill: 90%;
+    width: var(--nav-logo-fill);
+    height: var(--nav-logo-fill);
   }
 
   .sky {
