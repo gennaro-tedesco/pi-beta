@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte'
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { Droplets, Sun } from 'lucide-svelte'
+  import { CalendarDays, Clock, Droplets, Sun } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
-  import { Message } from '../components'
+  import { Button, Message } from '../components'
   import { getWeatherIcon } from './weatherIcon'
   import { getWeatherScene, type WeatherScene } from './weatherScene'
   import { transitionDuration } from '../transition'
@@ -12,10 +12,17 @@
   export let coords: { lat: number; lon: number } | null = null
 
   const dispatch = createEventDispatcher<{ scene: WeatherScene | null }>()
+  const cityClockUpdateIntervalMs = 15000
 
   let weather: main.Weather | null = null
   let error: string | null = null
   let loading = true
+  let forecastView: 'day' | 'week' = 'day'
+  let hourlyList: HTMLDivElement
+  let dragStartY: number | null = null
+  let dragStartScrollTop = 0
+  let cityClockNow = Date.now()
+  let cityClockTimer: ReturnType<typeof setInterval>
 
   export async function refresh(): Promise<void> {
     await loadWeather()
@@ -33,14 +40,43 @@
     }
   }
 
-  function formatDayLabel(dateString: string, index: number): string {
-    if (index === 0) {
-      return 'Today'
-    }
+  function formatDayLabel(dateString: string): string {
     return new Date(dateString).toLocaleDateString(undefined, { weekday: 'short' })
   }
 
-  onMount(loadWeather)
+  function formatHourLabel(dateString: string): string {
+    return new Date(dateString).toLocaleTimeString(undefined, { hour: '2-digit', hourCycle: 'h23' })
+  }
+
+  function handleListPointerDown(event: PointerEvent): void {
+    if (forecastView !== 'day') return
+    dragStartY = event.clientY
+    dragStartScrollTop = hourlyList.scrollTop
+    hourlyList.setPointerCapture(event.pointerId)
+  }
+
+  function handleListPointerMove(event: PointerEvent): void {
+    if (dragStartY === null) return
+    hourlyList.scrollTop = dragStartScrollTop - (event.clientY - dragStartY)
+  }
+
+  function handleListPointerUp(): void {
+    dragStartY = null
+  }
+
+  function formatCityTime(nowMs: number, utcOffsetSeconds: number): string {
+    const shifted = new Date(nowMs + utcOffsetSeconds * 1000)
+    return shifted.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hourCycle: 'h23' })
+  }
+
+  onMount(() => {
+    loadWeather()
+    cityClockTimer = setInterval(() => {
+      cityClockNow = Date.now()
+    }, cityClockUpdateIntervalMs)
+  })
+
+  onDestroy(() => clearInterval(cityClockTimer))
 
   $: scene = weather
       ? getWeatherScene(weather.weatherCode, weather.isDay, {
@@ -49,6 +85,7 @@
       })
     : null
   $: iconUrl = weather ? getWeatherIcon(weather.weatherCode, weather.isDay) : null
+  $: cityTime = weather ? formatCityTime(cityClockNow, weather.utcOffsetSeconds) : null
   $: dispatch('scene', scene)
 </script>
 
@@ -66,6 +103,7 @@
       <div class="card">
         <div class="card__header">
           <span class="card__city">{weather.city}</span>
+          {#if cityTime}<span class="card__time">{cityTime}</span>{/if}
         </div>
 
         <div class="card__scene">
@@ -97,14 +135,47 @@
     </div>
 
     <div class="forecast">
-      {#each weather.dailyTime as date, index (date)}
-        <div class="forecast__row">
-          <span class="forecast__day">{formatDayLabel(date, index)}</span>
-          <img class="forecast__icon" src={getWeatherIcon(weather.dailyWeatherCode[index], true)} alt="" />
-          <span class="forecast__high">{Math.round(weather.dailyTemperatureMax[index])}°</span>
-          <span class="forecast__low">{Math.round(weather.dailyTemperatureMin[index])}°</span>
-        </div>
-      {/each}
+      <div class="forecast__toggle">
+        <Button ghost={forecastView !== 'day'} on:click={() => (forecastView = 'day')} aria-label="Hourly forecast">
+          <Clock size={18} />
+        </Button>
+        <Button ghost={forecastView !== 'week'} on:click={() => (forecastView = 'week')} aria-label="Weekly forecast">
+          <CalendarDays size={18} />
+        </Button>
+      </div>
+
+      <div
+        class="forecast__list"
+        class:forecast__list--scroll={forecastView === 'day'}
+        bind:this={hourlyList}
+        on:pointerdown={handleListPointerDown}
+        on:pointermove={handleListPointerMove}
+        on:pointerup={handleListPointerUp}
+        on:pointercancel={handleListPointerUp}
+      >
+        {#if forecastView === 'week'}
+          {#each weather.dailyTime as date, index (date)}
+            {#if index > 0}
+              <div class="forecast__row">
+                <span class="forecast__day">{formatDayLabel(date)}</span>
+                <img class="forecast__icon" src={getWeatherIcon(weather.dailyWeatherCode[index], true)} alt="" />
+                <span class="forecast__temps">
+                  <span class="forecast__high">{Math.round(weather.dailyTemperatureMax[index])}°</span>/<span
+                    class="forecast__low">{Math.round(weather.dailyTemperatureMin[index])}°</span>
+                </span>
+              </div>
+            {/if}
+          {/each}
+        {:else}
+          {#each weather.hourlyTime as time, index (time)}
+            <div class="forecast__row forecast__row--hourly">
+              <span class="forecast__day">{formatHourLabel(time)}</span>
+              <img class="forecast__icon" src={getWeatherIcon(weather.hourlyWeatherCode[index], true)} alt="" />
+              <span class="forecast__high">{Math.round(weather.hourlyTemperature[index])}°</span>
+            </div>
+          {/each}
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -118,6 +189,7 @@
     --text-color: #4a3f66;
     --icon-glow-color: rgba(255, 255, 255, 0.35);
     --row-background: rgba(255, 255, 255, 0.5);
+    --hourly-row-gap: 1.95rem;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -159,6 +231,11 @@
   .card__city {
     font-size: 2.25rem;
     font-weight: 600;
+  }
+
+  .card__time {
+    font-size: 0.9rem;
+    opacity: 0.9;
   }
 
   .card__scene {
@@ -222,20 +299,64 @@
   .forecast {
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     gap: 0.5rem;
     width: 100%;
     max-width: var(--panel-width);
     height: var(--panel-height);
   }
 
+  .forecast__toggle {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .forecast__list {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .forecast__list--scroll {
+    justify-content: flex-start;
+    gap: var(--hourly-row-gap);
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+
+  .forecast__list--scroll:active {
+    cursor: grabbing;
+  }
+
+  .forecast__list--scroll::-webkit-scrollbar {
+    display: none;
+  }
+
   .forecast__row {
     display: grid;
-    grid-template-columns: 3rem 2rem 1fr 1fr;
+    grid-template-columns: 3rem 2rem 1fr;
     align-items: center;
     padding: 0.5rem 0.75rem;
     border-radius: 8px;
     background-color: var(--row-background);
+  }
+
+  .forecast__temps {
+    text-align: right;
+  }
+
+  .forecast__row--hourly {
+    grid-template-columns: 4rem 2rem 1fr;
+  }
+
+  .forecast__row--hourly .forecast__day {
+    white-space: nowrap;
   }
 
   .forecast__day {

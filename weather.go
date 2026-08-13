@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -30,6 +31,10 @@ type Weather struct {
 	DailyWeatherCode    []int     `json:"dailyWeatherCode"`
 	DailyTemperatureMax []float64 `json:"dailyTemperatureMax"`
 	DailyTemperatureMin []float64 `json:"dailyTemperatureMin"`
+	HourlyTime          []string  `json:"hourlyTime"`
+	HourlyTemperature   []float64 `json:"hourlyTemperature"`
+	HourlyWeatherCode   []int     `json:"hourlyWeatherCode"`
+	UTCOffsetSeconds    int       `json:"utcOffsetSeconds"`
 }
 
 type ipLocation struct {
@@ -48,7 +53,8 @@ type nominatimResponse struct {
 }
 
 type openMeteoResponse struct {
-	Current struct {
+	UTCOffsetSeconds int `json:"utc_offset_seconds"`
+	Current          struct {
 		Time            string  `json:"time"`
 		Temperature2m   float64 `json:"temperature_2m"`
 		WeatherCode     int     `json:"weather_code"`
@@ -57,8 +63,10 @@ type openMeteoResponse struct {
 		RainProbability int     `json:"precipitation_probability"`
 	} `json:"current"`
 	Hourly struct {
-		Time    []string  `json:"time"`
-		UVIndex []float64 `json:"uv_index"`
+		Time          []string  `json:"time"`
+		UVIndex       []float64 `json:"uv_index"`
+		Temperature2m []float64 `json:"temperature_2m"`
+		WeatherCode   []int     `json:"weather_code"`
 	} `json:"hourly"`
 	Daily struct {
 		Time             []string  `json:"time"`
@@ -103,6 +111,7 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		DailyWeatherCode:    forecast.Daily.WeatherCode,
 		DailyTemperatureMax: forecast.Daily.Temperature2mMax,
 		DailyTemperatureMin: forecast.Daily.Temperature2mMin,
+		UTCOffsetSeconds:    forecast.UTCOffsetSeconds,
 	}
 
 	currentHour := forecast.Current.Time
@@ -114,6 +123,15 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		return Weather{}, errors.New(invalidUVDataMessage)
 	}
 	result.UVIndex = forecast.Hourly.UVIndex[currentIndex]
+
+	today := currentHour[:10]
+	endIndex := currentIndex
+	for endIndex < len(forecast.Hourly.Time) && strings.HasPrefix(forecast.Hourly.Time[endIndex], today) {
+		endIndex++
+	}
+	result.HourlyTime = forecast.Hourly.Time[currentIndex:endIndex]
+	result.HourlyTemperature = forecast.Hourly.Temperature2m[currentIndex:endIndex]
+	result.HourlyWeatherCode = forecast.Hourly.WeatherCode[currentIndex:endIndex]
 
 	return result, nil
 }
@@ -176,7 +194,7 @@ func fetchIPLocation() (ipLocation, error) {
 
 func fetchForecast(lat, lon float64) (openMeteoResponse, error) {
 	url := fmt.Sprintf(
-		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
+		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
 		weatherForecastURL, lat, lon,
 	)
 

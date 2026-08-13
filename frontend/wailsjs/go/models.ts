@@ -12,6 +12,10 @@ export namespace main {
 	    dailyWeatherCode: number[];
 	    dailyTemperatureMax: number[];
 	    dailyTemperatureMin: number[];
+	    hourlyTime: string[];
+	    hourlyTemperature: number[];
+	    hourlyWeatherCode: number[];
+	    utcOffsetSeconds: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Weather(source);
@@ -30,6 +34,10 @@ export namespace main {
 	        this.dailyWeatherCode = source["dailyWeatherCode"];
 	        this.dailyTemperatureMax = source["dailyTemperatureMax"];
 	        this.dailyTemperatureMin = source["dailyTemperatureMin"];
+	        this.hourlyTime = source["hourlyTime"];
+	        this.hourlyTemperature = source["hourlyTemperature"];
+	        this.hourlyWeatherCode = source["hourlyWeatherCode"];
+	        this.utcOffsetSeconds = source["utcOffsetSeconds"];
 	    }
 	}
 
