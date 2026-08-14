@@ -61,6 +61,7 @@
   const chooseMonthLabel = 'Choose month'
   const todayButtonLabel = 'Go to today'
   const monthPickerSelector = '.calendar__month-picker'
+  const calendarDayContainerType = 'size'
   const calendarColumnCount = 7
   const calendarMonthCount = 12
   const previousMonthOffset = -1
@@ -488,6 +489,7 @@
                     title={calendarDay.event?.label}
                     style:grid-column-start={calendarDay.gridColumnStart}
                     style:grid-row={calendarDay.gridRow}
+                    style:container-type={calendarDayContainerType}
                   >
                     <span class="calendar__day-number">{calendarDay.day}</span>
                     {#if calendarDay.event}
@@ -657,13 +659,19 @@
   .tiles :global(.tile__slideshow) {
     --ambient-edge-offset: 1%;
     --ambient-opacity: 0.72;
-    --ambient-size: clamp(4.5rem, 10vw, 7rem);
-    --ambient-travel: 0.5rem;
+    --ambient-size: min(28cqmin, 7rem);
+    --ambient-travel: min(2cqmin, 0.5rem);
     --ambient-phase-delay: -3s;
     --ambient-duration: 6s;
     --landscape-duration: 15s;
-    --landscape-radius: 1rem;
-    --landscape-shadow: 0 1rem 2.5rem rgba(74, 63, 102, 0.2);
+    --landscape-width: min(92%, 18rem, 100cqh);
+    --landscape-radius: min(4cqmin, 1rem);
+    --landscape-shadow-offset: min(4cqmin, 1rem);
+    --landscape-shadow-blur: min(10cqmin, 2.5rem);
+    --landscape-shadow: 0 var(--landscape-shadow-offset) var(--landscape-shadow-blur) rgba(74, 63, 102, 0.2);
+    --sun-shadow-blur: min(8cqmin, 2rem);
+    --moon-shadow-blur: min(6cqmin, 1.5rem);
+    --round-shape-radius: 50%;
     position: relative;
     display: flex;
     align-items: center;
@@ -695,7 +703,7 @@
   .tiles :global(.tile__landscapes) {
     position: relative;
     z-index: 1;
-    width: min(92%, 18rem);
+    width: var(--landscape-width);
     aspect-ratio: 4 / 3;
     overflow: hidden;
     border-radius: var(--landscape-radius);
@@ -728,14 +736,14 @@
     position: absolute;
     width: 16%;
     aspect-ratio: 1;
-    border-radius: 50%;
+    border-radius: var(--round-shape-radius);
   }
 
   .tiles :global(.tile__orb--sun) {
     top: 16%;
     right: 18%;
     background: #fff0b5;
-    box-shadow: 0 0 2rem rgba(255, 240, 181, 0.8);
+    box-shadow: 0 0 var(--sun-shadow-blur) rgba(255, 240, 181, 0.8);
     animation: sunDrift var(--landscape-duration) ease-in-out infinite;
   }
 
@@ -743,7 +751,7 @@
     top: 14%;
     left: 18%;
     background: #f8e8cf;
-    box-shadow: 0 0 1.5rem rgba(248, 232, 207, 0.55);
+    box-shadow: 0 0 var(--moon-shadow-blur) rgba(248, 232, 207, 0.55);
     animation: moonDrift var(--landscape-duration) ease-in-out infinite;
   }
 
@@ -773,7 +781,7 @@
     right: -10%;
     left: -10%;
     height: 32%;
-    border-radius: 50%;
+    border-radius: var(--round-shape-radius);
     animation: waveDrift var(--landscape-duration) ease-in-out infinite;
   }
 
@@ -813,7 +821,7 @@
     position: absolute;
     width: 22%;
     height: 7%;
-    border-radius: 999px;
+    border-radius: 50%;
     background: rgba(255, 255, 255, 0.72);
     animation: cloudDrift var(--landscape-duration) linear infinite;
   }
@@ -927,29 +935,33 @@
   }
 
   .tiles :global(.tile__weather-scene) {
+    --weather-shadow-blur: min(7cqmin, 28px);
+    --weather-float-distance: min(1.5cqmin, 6px);
     width: 80%;
     height: 80%;
     object-fit: contain;
-    filter: drop-shadow(0 0 28px rgba(255, 255, 255, 0.18));
+    filter: drop-shadow(0 0 var(--weather-shadow-blur) rgba(255, 255, 255, 0.18));
     animation: floatIcon 6s ease-in-out infinite;
   }
 
   .tiles :global(.tile__calendar) {
-    --calendar-preview-width: min(82%, 15rem);
-    --calendar-preview-radius: 1rem;
-    --calendar-preview-padding: 1rem;
-    --calendar-preview-gap: 0.45rem;
+    --calendar-preview-width: min(82%, 82cqh, 15rem);
+    --calendar-preview-radius: min(4cqmin, 1rem);
+    --calendar-preview-padding: min(4cqmin, 1rem);
+    --calendar-preview-gap: min(2cqmin, 0.45rem);
     --calendar-preview-background: rgba(255, 255, 255, 0.78);
-    --calendar-preview-shadow: 0 1rem 2.5rem rgba(74, 63, 102, 0.18);
-    --calendar-preview-month-size: 0.8rem;
-    --calendar-preview-day-size: clamp(3.5rem, 8vw, 5.5rem);
-    --calendar-preview-weekday-size: 0.9rem;
+    --calendar-preview-shadow-offset: min(4cqmin, 1rem);
+    --calendar-preview-shadow-blur: min(10cqmin, 2.5rem);
+    --calendar-preview-shadow: 0 var(--calendar-preview-shadow-offset) var(--calendar-preview-shadow-blur) rgba(74, 63, 102, 0.18);
+    --calendar-preview-month-size: min(4cqmin, 0.8rem);
+    --calendar-preview-day-size: min(30cqmin, 5.5rem);
+    --calendar-preview-weekday-size: min(4.5cqmin, 0.9rem);
     --calendar-preview-aspect-ratio: 1;
     --calendar-preview-scale: 0.8;
     --calendar-page-fold-duration: 4s;
     --calendar-page-fold-angle: 180deg;
     --calendar-page-fold-scale: 1;
-    --calendar-preview-perspective: 120rem;
+    --calendar-preview-perspective: min(480cqmin, 120rem);
     --calendar-zero: 0;
     --calendar-preview-font-weight: 600;
     --calendar-preview-line-height: 1;
@@ -968,10 +980,10 @@
 
   .tiles :global(.tile__calendar-binding) {
     --calendar-binding-width: 62%;
-    --calendar-binding-offset: -0.65rem;
+    --calendar-binding-offset: max(-3cqmin, -0.65rem);
     --calendar-binding-horizontal-position: 50%;
     --calendar-binding-horizontal-offset: -50%;
-    --calendar-binding-size: 0.75rem;
+    --calendar-binding-size: min(4cqmin, 0.75rem);
     --calendar-binding-color: #d17a86;
     position: absolute;
     top: var(--calendar-binding-offset);
@@ -1057,6 +1069,11 @@
     --calendar-first-day-column: 2;
     --calendar-event-gap: 0.25rem;
     --calendar-event-size: clamp(1.5rem, 3vw, 2.5rem);
+    --calendar-day-size: 1rem;
+    --calendar-day-height-size: 45cqh;
+    --calendar-event-height-size: 35cqh;
+    --calendar-event-height-gap: 5cqh;
+    --calendar-day-line-height: 1;
     --calendar-zero: 0;
     --calendar-semibold-weight: 600;
     --calendar-day-weight: 500;
@@ -1189,11 +1206,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: var(--calendar-event-gap);
+    gap: var(--calendar-zero);
     border: var(--calendar-day-border);
     border-radius: var(--calendar-day-radius);
     background: var(--calendar-day-background);
     font-weight: var(--calendar-day-weight);
+  }
+
+  .calendar__day-number {
+    font-size: min(var(--calendar-day-size), var(--calendar-day-height-size));
+    line-height: var(--calendar-day-line-height);
   }
 
   .calendar__event {
@@ -1201,7 +1223,8 @@
     align-items: center;
     justify-content: center;
     gap: var(--calendar-event-gap);
-    font-size: var(--calendar-event-size);
+    margin-block: min(var(--calendar-event-gap), var(--calendar-event-height-gap));
+    font-size: min(var(--calendar-event-size), var(--calendar-event-height-size));
     line-height: 1;
   }
 
@@ -1245,7 +1268,7 @@
       transform: translateY(0);
     }
     50% {
-      transform: translateY(-6px);
+      transform: translateY(calc(var(--weather-float-distance) * -1));
     }
   }
 

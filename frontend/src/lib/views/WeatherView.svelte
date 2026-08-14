@@ -22,6 +22,7 @@
   const sunViewBox = '0 0 100 64'
   const sunAspectRatio = 'none'
   const sunCycleLabel = "Today's sunrise and sunset"
+  const weatherContainerType = 'size'
   const timestampHourStart = 11
   const timestampMinuteEnd = 16
   const timestampUTCDesignator = ':00Z'
@@ -128,6 +129,7 @@
 
 <div
   class="weather"
+  style:container-type={weatherContainerType}
   out:scale={{ duration: transitionDuration }}
   in:scale={{ duration: transitionDuration, delay: transitionDuration }}
 >
@@ -248,47 +250,71 @@
 
 <style>
   .weather {
-    --panel-width: 300px;
-    --details-height: 1.5rem;
-    --sun-cycle-width: 9rem;
-    --sun-cycle-height: 4.25rem;
+    --panel-width: min(300px, 38cqw, 62cqh);
+    --details-height: min(1.5rem, 6cqmin);
+    --sun-cycle-width: min(9rem, 22cqw, 36cqmin);
+    --sun-cycle-height: min(4.25rem, 17cqmin);
     --sun-cycle-horizontal-position: 50%;
     --sun-cycle-horizontal-offset: -50%;
     --sun-cycle-vertical-position: 50%;
     --sun-cycle-vertical-offset: -50%;
-    --panel-gap: 1rem;
+    --panel-gap: min(1rem, 4cqmin);
     --panel-height: calc(var(--panel-width) * 4 / 3 + var(--panel-gap) + var(--details-height));
     --text-color: #4a3f66;
     --icon-glow-color: rgba(255, 255, 255, 0.35);
     --row-background: rgba(255, 255, 255, 0.5);
-    --hourly-row-gap: 1.95rem;
+    --hourly-row-gap: min(1.95rem, 8cqmin);
     --sun-arc-color: rgba(74, 63, 102, 0.3);
     --sun-color: #f6b73c;
     --sun-glow-color: rgba(246, 183, 60, 0.55);
-    --sun-glow-size: 0.8rem;
+    --sun-glow-size: min(0.8rem, 3.2cqmin);
     --sun-motion-duration: 15s;
     --sun-entry-duration: 1.2s;
-    --sun-visual-height: 2.5rem;
+    --sun-visual-height: min(2.5rem, 10cqmin);
     --sun-arc-stroke-width: 1;
     --sun-arc-length: 160;
     --minimum-sun-arc-offset: 0;
     --sun-marker-horizontal-offset: -50%;
     --sun-marker-vertical-offset: 50%;
     --sun-glow-duration: 2.4s;
-    --sun-time-font-size: 0.8rem;
-    --sun-time-gap: 0.35rem;
+    --sun-time-font-size: min(0.8rem, 3.2cqmin);
+    --sun-time-gap: min(0.35rem, 1.4cqmin);
     --sun-event-animation-duration: 3.6s;
-    --sun-event-rise-distance: -0.18rem;
-    --sun-event-set-distance: 0.18rem;
+    --sun-event-rise-distance: max(-0.18rem, -0.72cqmin);
+    --sun-event-set-distance: min(0.18rem, 0.72cqmin);
     --sun-event-dimmed-opacity: 0.72;
     --sun-dimmed-opacity: 0.8;
     --sun-full-opacity: 1;
+    --weather-font-size: min(1rem, 4cqmin);
+    --weather-icon-size: min(18px, 4.5cqmin);
+    --card-padding: min(1.25rem, 5cqmin);
+    --city-font-size: min(2.25rem, 9cqmin);
+    --secondary-font-size: min(0.9rem, 3.6cqmin);
+    --scene-margin: min(0.75rem, 3cqmin);
+    --scene-shadow-blur: min(28px, 7cqmin);
+    --temperature-offset: min(0.5rem, 2cqmin);
+    --temperature-font-size: min(3rem, 12cqmin);
+    --compact-gap: min(0.25rem, 1cqmin);
+    --condition-font-size: min(1.1rem, 4.4cqmin);
+    --details-gap: min(1.5rem, 6cqmin);
+    --detail-gap: min(0.4rem, 1.6cqmin);
+    --forecast-gap: min(0.5rem, 2cqmin);
+    --forecast-day-column: min(3rem, 12cqmin);
+    --forecast-hour-column: min(4rem, 16cqmin);
+    --forecast-icon-column: min(2rem, 8cqmin);
+    --forecast-row-padding-block: min(0.5rem, 2cqmin);
+    --forecast-row-padding-inline: min(0.75rem, 3cqmin);
+    --forecast-row-radius: min(8px, 2cqmin);
+    --forecast-icon-size: min(24px, 6cqmin);
+    --float-distance: min(6px, 1.5cqmin);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--panel-gap);
     width: 100%;
+    height: 100%;
+    font-size: var(--weather-font-size);
   }
 
   .loading {
@@ -312,6 +338,7 @@
     align-items: center;
     justify-content: space-evenly;
     width: 100%;
+    height: 100%;
   }
 
   .card {
@@ -320,7 +347,8 @@
     flex-direction: column;
     width: 100%;
     aspect-ratio: 3 / 4;
-    padding: 1.25rem;
+    box-sizing: border-box;
+    padding: var(--card-padding);
     color: var(--text-color);
     overflow: hidden;
   }
@@ -332,12 +360,12 @@
   }
 
   .card__city {
-    font-size: 2.25rem;
+    font-size: var(--city-font-size);
     font-weight: 600;
   }
 
   .card__time {
-    font-size: 0.9rem;
+    font-size: var(--secondary-font-size);
     opacity: 0.9;
   }
 
@@ -348,22 +376,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0.75rem 0;
+    margin: var(--scene-margin) 0;
   }
 
   .card__icon {
     width: 92%;
     height: 92%;
     object-fit: contain;
-    filter: drop-shadow(0 0 28px var(--icon-glow-color));
+    filter: drop-shadow(0 0 var(--scene-shadow-blur) var(--icon-glow-color));
     animation: floatIcon 6s ease-in-out infinite;
   }
 
   .card__temperature {
     position: absolute;
-    top: 0.5rem;
+    top: var(--temperature-offset);
     left: 0;
-    font-size: 3rem;
+    font-size: var(--temperature-font-size);
     font-weight: 700;
     line-height: 1;
   }
@@ -371,16 +399,16 @@
   .card__footer {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--compact-gap);
   }
 
   .card__range {
-    font-size: 0.9rem;
+    font-size: var(--secondary-font-size);
     opacity: 0.9;
   }
 
   .card__condition {
-    font-size: 1.1rem;
+    font-size: var(--condition-font-size);
     font-weight: 600;
   }
 
@@ -388,7 +416,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1.5rem;
+    gap: var(--details-gap);
     width: 100%;
     height: var(--details-height);
   }
@@ -469,13 +497,13 @@
   .detail {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: var(--detail-gap);
   }
 
   .forecast {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--forecast-gap);
     width: 100%;
     max-width: var(--panel-width);
     height: var(--panel-height);
@@ -484,14 +512,14 @@
   .forecast__toggle {
     display: flex;
     justify-content: center;
-    gap: 0.5rem;
+    gap: var(--forecast-gap);
   }
 
   .forecast__list {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: var(--forecast-gap);
     flex: 1;
     min-height: 0;
   }
@@ -516,10 +544,10 @@
 
   .forecast__row {
     display: grid;
-    grid-template-columns: 3rem 2rem 1fr;
+    grid-template-columns: var(--forecast-day-column) var(--forecast-icon-column) 1fr;
     align-items: center;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
+    padding: var(--forecast-row-padding-block) var(--forecast-row-padding-inline);
+    border-radius: var(--forecast-row-radius);
     background-color: var(--row-background);
   }
 
@@ -528,7 +556,7 @@
   }
 
   .forecast__row--hourly {
-    grid-template-columns: 4rem 2rem 1fr;
+    grid-template-columns: var(--forecast-hour-column) var(--forecast-icon-column) 1fr;
   }
 
   .forecast__row--hourly .forecast__day {
@@ -540,8 +568,17 @@
   }
 
   .forecast__icon {
-    width: 24px;
-    height: 24px;
+    width: var(--forecast-icon-size);
+    height: var(--forecast-icon-size);
+  }
+
+  .weather :global(.lucide) {
+    width: var(--weather-icon-size);
+    height: var(--weather-icon-size);
+  }
+
+  .forecast__toggle :global(.button) {
+    padding: var(--forecast-row-padding-block) var(--forecast-row-padding-inline);
   }
 
   .forecast__high {
@@ -560,7 +597,7 @@
       transform: translateY(0);
     }
     50% {
-      transform: translateY(-6px);
+      transform: translateY(calc(var(--float-distance) * -1));
     }
   }
 
