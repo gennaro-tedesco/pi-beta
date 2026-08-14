@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { CalendarDays, Clock, Droplets, Sun } from 'lucide-svelte'
+  import { CalendarDays, Clock, Droplets, MoonStar, Sun, SunMedium } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
   import { Button, Message } from '../components'
@@ -13,6 +13,19 @@
 
   const dispatch = createEventDispatcher<{ scene: WeatherScene | null }>()
   const cityClockUpdateIntervalMs = 15000
+  const millisecondsPerSecond = 1000
+  const minimumSunProgress = 0
+  const maximumSunProgress = 1
+  const sunArcHeightPercent = 94
+  const sunIconSize = 18
+  const sunPath = 'M 1 63 Q 50 -58 99 63'
+  const sunViewBox = '0 0 100 64'
+  const sunAspectRatio = 'none'
+  const sunCycleLabel = "Today's sunrise and sunset"
+  const timestampHourStart = 11
+  const timestampMinuteEnd = 16
+  const timestampUTCDesignator = ':00Z'
+  const percentageScale = 100
 
   let weather: main.Weather | null = null
   let error: string | null = null
@@ -65,8 +78,29 @@
   }
 
   function formatCityTime(nowMs: number, utcOffsetSeconds: number): string {
-    const shifted = new Date(nowMs + utcOffsetSeconds * 1000)
+    const shifted = new Date(nowMs + utcOffsetSeconds * millisecondsPerSecond)
     return shifted.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hourCycle: 'h23' })
+  }
+
+  function formatSunTime(timestamp: string): string {
+    return timestamp.slice(timestampHourStart, timestampMinuteEnd)
+  }
+
+  function getSunPosition(nowMs: number, utcOffsetSeconds: number, sunrise: string, sunset: string) {
+    const cityNowMs = nowMs + utcOffsetSeconds * millisecondsPerSecond
+    const sunriseMs = Date.parse(`${sunrise}${timestampUTCDesignator}`)
+    const sunsetMs = Date.parse(`${sunset}${timestampUTCDesignator}`)
+    const daylightMs = sunsetMs - sunriseMs
+    const progress = Math.min(
+      maximumSunProgress,
+      Math.max(minimumSunProgress, (cityNowMs - sunriseMs) / daylightMs)
+    )
+
+    return {
+      left: progress * percentageScale,
+      bottom: Math.sin(progress * Math.PI) * sunArcHeightPercent,
+      daylight: cityNowMs >= sunriseMs && cityNowMs <= sunsetMs
+    }
   }
 
   onMount(() => {
@@ -86,6 +120,9 @@
     : null
   $: iconUrl = weather ? getWeatherIcon(weather.weatherCode, weather.isDay) : null
   $: cityTime = weather ? formatCityTime(cityClockNow, weather.utcOffsetSeconds) : null
+  $: sunPosition = weather
+    ? getSunPosition(cityClockNow, weather.utcOffsetSeconds, weather.sunrise, weather.sunset)
+    : null
   $: dispatch('scene', scene)
 </script>
 
@@ -99,82 +136,111 @@
   {:else if loading || weather === null || scene === null || iconUrl === null}
     <p class="loading">Loading weather…</p>
   {:else}
-    <div class="weather__main">
-      <div class="card">
-        <div class="card__header">
-          <span class="card__city">{weather.city}</span>
-          {#if cityTime}<span class="card__time">{cityTime}</span>{/if}
+    <div class="weather__content">
+      <div class="weather__main">
+        <div class="card">
+          <div class="card__header">
+            <span class="card__city">{weather.city}</span>
+            {#if cityTime}<span class="card__time">{cityTime}</span>{/if}
+          </div>
+
+          <div class="card__scene">
+            <img class="card__icon" src={iconUrl} alt={scene.label} />
+            <span class="card__temperature">{Math.round(weather.temperature)}°</span>
+          </div>
+
+          <div class="card__footer">
+            <span class="card__range">
+              {Math.round(weather.dailyTemperatureMin[0])}°/{Math.round(weather.dailyTemperatureMax[0])}°
+            </span>
+            <span class="card__condition">{scene.label}</span>
+          </div>
         </div>
 
-        <div class="card__scene">
-          <img class="card__icon" src={iconUrl} alt={scene.label} />
-          <span class="card__temperature">{Math.round(weather.temperature)}°</span>
+        <div class="details">
+          <div class="detail">
+            <span>{weather.windSpeed} km/h</span>
+          </div>
+          <div class="detail">
+            <Droplets size={18} />
+            <span>{weather.rainProbability}%</span>
+          </div>
+          <div class="detail">
+            <Sun size={18} />
+            <span>UV {weather.uvIndex}</span>
+          </div>
         </div>
+      </div>
 
-        <div class="card__footer">
-          <span class="card__range">
-            {Math.round(weather.dailyTemperatureMin[0])}°/{Math.round(weather.dailyTemperatureMax[0])}°
+      <div class="sun-cycle" aria-label={sunCycleLabel}>
+        <div class="sun-cycle__visual" aria-hidden="true">
+          <svg class="sun-cycle__arc" viewBox={sunViewBox} preserveAspectRatio={sunAspectRatio}>
+            <path d={sunPath} />
+          </svg>
+          {#if sunPosition}
+            <span
+              class="sun-cycle__sun"
+              class:sun-cycle__sun--daylight={sunPosition.daylight}
+              style="left: {sunPosition.left}%; bottom: {sunPosition.bottom}%;"
+            >
+              <Sun size={sunIconSize} />
+            </span>
+          {/if}
+        </div>
+        <div class="sun-cycle__times">
+          <span class="sun-cycle__event">
+            <span class="sun-cycle__event-icon sun-cycle__event-icon--wake"><SunMedium size={sunIconSize} /></span>
+            <span>{formatSunTime(weather.sunrise)}</span>
           </span>
-          <span class="card__condition">{scene.label}</span>
+          <span class="sun-cycle__event">
+            <span class="sun-cycle__event-icon sun-cycle__event-icon--sleep"><MoonStar size={sunIconSize} /></span>
+            <span>{formatSunTime(weather.sunset)}</span>
+          </span>
         </div>
       </div>
 
-      <div class="details">
-        <div class="detail">
-          <span>{weather.windSpeed} km/h</span>
+      <div class="forecast">
+        <div class="forecast__toggle">
+          <Button ghost={forecastView !== 'day'} on:click={() => (forecastView = 'day')} aria-label="Hourly forecast">
+            <Clock size={18} />
+          </Button>
+          <Button ghost={forecastView !== 'week'} on:click={() => (forecastView = 'week')} aria-label="Weekly forecast">
+            <CalendarDays size={18} />
+          </Button>
         </div>
-        <div class="detail">
-          <Droplets size={18} />
-          <span>{weather.rainProbability}%</span>
-        </div>
-        <div class="detail">
-          <Sun size={18} />
-          <span>UV {weather.uvIndex}</span>
-        </div>
-      </div>
-    </div>
 
-    <div class="forecast">
-      <div class="forecast__toggle">
-        <Button ghost={forecastView !== 'day'} on:click={() => (forecastView = 'day')} aria-label="Hourly forecast">
-          <Clock size={18} />
-        </Button>
-        <Button ghost={forecastView !== 'week'} on:click={() => (forecastView = 'week')} aria-label="Weekly forecast">
-          <CalendarDays size={18} />
-        </Button>
-      </div>
-
-      <div
-        class="forecast__list"
-        class:forecast__list--scroll={forecastView === 'day'}
-        bind:this={hourlyList}
-        on:pointerdown={handleListPointerDown}
-        on:pointermove={handleListPointerMove}
-        on:pointerup={handleListPointerUp}
-        on:pointercancel={handleListPointerUp}
-      >
-        {#if forecastView === 'week'}
-          {#each weather.dailyTime as date, index (date)}
-            {#if index > 0}
-              <div class="forecast__row">
-                <span class="forecast__day">{formatDayLabel(date)}</span>
-                <img class="forecast__icon" src={getWeatherIcon(weather.dailyWeatherCode[index], true)} alt="" />
-                <span class="forecast__temps">
-                  <span class="forecast__high">{Math.round(weather.dailyTemperatureMax[index])}°</span>/<span
-                    class="forecast__low">{Math.round(weather.dailyTemperatureMin[index])}°</span>
-                </span>
+        <div
+          class="forecast__list"
+          class:forecast__list--scroll={forecastView === 'day'}
+          bind:this={hourlyList}
+          on:pointerdown={handleListPointerDown}
+          on:pointermove={handleListPointerMove}
+          on:pointerup={handleListPointerUp}
+          on:pointercancel={handleListPointerUp}
+        >
+          {#if forecastView === 'week'}
+            {#each weather.dailyTime as date, index (date)}
+              {#if index > 0}
+                <div class="forecast__row">
+                  <span class="forecast__day">{formatDayLabel(date)}</span>
+                  <img class="forecast__icon" src={getWeatherIcon(weather.dailyWeatherCode[index], true)} alt="" />
+                  <span class="forecast__temps">
+                    <span class="forecast__high">{Math.round(weather.dailyTemperatureMax[index])}°</span>/<span
+                      class="forecast__low">{Math.round(weather.dailyTemperatureMin[index])}°</span>
+                  </span>
+                </div>
+              {/if}
+            {/each}
+          {:else}
+            {#each weather.hourlyTime as time, index (time)}
+              <div class="forecast__row forecast__row--hourly">
+                <span class="forecast__day">{formatHourLabel(time)}</span>
+                <img class="forecast__icon" src={getWeatherIcon(weather.hourlyWeatherCode[index], true)} alt="" />
+                <span class="forecast__high">{Math.round(weather.hourlyTemperature[index])}°</span>
               </div>
-            {/if}
-          {/each}
-        {:else}
-          {#each weather.hourlyTime as time, index (time)}
-            <div class="forecast__row forecast__row--hourly">
-              <span class="forecast__day">{formatHourLabel(time)}</span>
-              <img class="forecast__icon" src={getWeatherIcon(weather.hourlyWeatherCode[index], true)} alt="" />
-              <span class="forecast__high">{Math.round(weather.hourlyTemperature[index])}°</span>
-            </div>
-          {/each}
-        {/if}
+            {/each}
+          {/if}
+        </div>
       </div>
     </div>
   {/if}
@@ -184,16 +250,44 @@
   .weather {
     --panel-width: 300px;
     --details-height: 1.5rem;
+    --sun-cycle-width: 9rem;
+    --sun-cycle-height: 4.25rem;
+    --sun-cycle-horizontal-position: 50%;
+    --sun-cycle-horizontal-offset: -50%;
+    --sun-cycle-vertical-position: 50%;
+    --sun-cycle-vertical-offset: -50%;
     --panel-gap: 1rem;
     --panel-height: calc(var(--panel-width) * 4 / 3 + var(--panel-gap) + var(--details-height));
     --text-color: #4a3f66;
     --icon-glow-color: rgba(255, 255, 255, 0.35);
     --row-background: rgba(255, 255, 255, 0.5);
     --hourly-row-gap: 1.95rem;
+    --sun-arc-color: rgba(74, 63, 102, 0.3);
+    --sun-color: #f6b73c;
+    --sun-glow-color: rgba(246, 183, 60, 0.55);
+    --sun-glow-size: 0.8rem;
+    --sun-motion-duration: 15s;
+    --sun-entry-duration: 1.2s;
+    --sun-visual-height: 2.5rem;
+    --sun-arc-stroke-width: 1;
+    --sun-arc-length: 160;
+    --minimum-sun-arc-offset: 0;
+    --sun-marker-horizontal-offset: -50%;
+    --sun-marker-vertical-offset: 50%;
+    --sun-glow-duration: 2.4s;
+    --sun-time-font-size: 0.8rem;
+    --sun-time-gap: 0.35rem;
+    --sun-event-animation-duration: 3.6s;
+    --sun-event-rise-distance: -0.18rem;
+    --sun-event-set-distance: 0.18rem;
+    --sun-event-dimmed-opacity: 0.72;
+    --sun-dimmed-opacity: 0.8;
+    --sun-full-opacity: 1;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-evenly;
+    justify-content: center;
+    gap: var(--panel-gap);
     width: 100%;
   }
 
@@ -209,6 +303,15 @@
     width: var(--panel-width);
     height: var(--panel-height);
     flex-shrink: 0;
+  }
+
+  .weather__content {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-evenly;
+    width: 100%;
   }
 
   .card {
@@ -288,6 +391,79 @@
     gap: 1.5rem;
     width: 100%;
     height: var(--details-height);
+  }
+
+  .sun-cycle {
+    position: absolute;
+    top: var(--sun-cycle-vertical-position);
+    left: var(--sun-cycle-horizontal-position);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: var(--sun-cycle-width);
+    height: var(--sun-cycle-height);
+    color: var(--text-color);
+    transform: translate(var(--sun-cycle-horizontal-offset), var(--sun-cycle-vertical-offset));
+    pointer-events: none;
+  }
+
+  .sun-cycle__visual {
+    position: relative;
+    width: 100%;
+    height: var(--sun-visual-height);
+  }
+
+  .sun-cycle__arc {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .sun-cycle__arc path {
+    fill: none;
+    stroke: var(--sun-arc-color);
+    stroke-width: var(--sun-arc-stroke-width);
+    stroke-dasharray: var(--sun-arc-length);
+    animation: drawSunArc var(--sun-entry-duration) ease-out both;
+  }
+
+  .sun-cycle__sun {
+    position: absolute;
+    display: flex;
+    color: var(--sun-color);
+    transform: translate(var(--sun-marker-horizontal-offset), var(--sun-marker-vertical-offset));
+    transition: left var(--sun-motion-duration) linear, bottom var(--sun-motion-duration) linear;
+  }
+
+  .sun-cycle__sun--daylight {
+    filter: drop-shadow(0 0 var(--sun-glow-size) var(--sun-glow-color));
+    animation: sunGlow var(--sun-glow-duration) ease-in-out infinite;
+  }
+
+  .sun-cycle__times {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--sun-time-font-size);
+  }
+
+  .sun-cycle__event {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sun-time-gap);
+  }
+
+  .sun-cycle__event-icon {
+    display: flex;
+  }
+
+  .sun-cycle__event-icon--wake {
+    animation: wakeIcon var(--sun-event-animation-duration) ease-in-out infinite;
+  }
+
+  .sun-cycle__event-icon--sleep {
+    animation: sleepIcon var(--sun-event-animation-duration) ease-in-out infinite;
   }
 
   .detail {
@@ -385,6 +561,59 @@
     }
     50% {
       transform: translateY(-6px);
+    }
+  }
+
+  @keyframes drawSunArc {
+    from {
+      stroke-dashoffset: var(--sun-arc-length);
+    }
+    to {
+      stroke-dashoffset: var(--minimum-sun-arc-offset);
+    }
+  }
+
+  @keyframes sunGlow {
+    0%,
+    100% {
+      opacity: var(--sun-dimmed-opacity);
+    }
+    50% {
+      opacity: var(--sun-full-opacity);
+    }
+  }
+
+  @keyframes wakeIcon {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(var(--sun-event-rise-distance));
+    }
+  }
+
+  @keyframes sleepIcon {
+    0%,
+    100% {
+      transform: translateY(0);
+      opacity: var(--sun-full-opacity);
+    }
+    50% {
+      transform: translateY(var(--sun-event-set-distance));
+      opacity: var(--sun-event-dimmed-opacity);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sun-cycle__arc path,
+    .sun-cycle__sun--daylight,
+    .sun-cycle__event-icon {
+      animation: none;
+    }
+
+    .sun-cycle__sun {
+      transition: none;
     }
   }
 </style>

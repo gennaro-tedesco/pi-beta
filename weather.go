@@ -16,6 +16,8 @@ const reverseGeocodeUserAgent = "pi-beta-weather-dashboard"
 const reverseGeocodeZoom = 10
 const weatherHTTPTimeout = 5 * time.Second
 const invalidUVDataMessage = "forecast response does not contain UV data for the current time"
+const currentDayIndex = 0
+const weatherForecastQueryFormat = "%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=7&timezone=auto"
 
 var weatherHTTPClient = &http.Client{Timeout: weatherHTTPTimeout}
 
@@ -31,6 +33,8 @@ type Weather struct {
 	DailyWeatherCode    []int     `json:"dailyWeatherCode"`
 	DailyTemperatureMax []float64 `json:"dailyTemperatureMax"`
 	DailyTemperatureMin []float64 `json:"dailyTemperatureMin"`
+	Sunrise             string    `json:"sunrise"`
+	Sunset              string    `json:"sunset"`
 	HourlyTime          []string  `json:"hourlyTime"`
 	HourlyTemperature   []float64 `json:"hourlyTemperature"`
 	HourlyWeatherCode   []int     `json:"hourlyWeatherCode"`
@@ -73,6 +77,8 @@ type openMeteoResponse struct {
 		WeatherCode      []int     `json:"weather_code"`
 		Temperature2mMax []float64 `json:"temperature_2m_max"`
 		Temperature2mMin []float64 `json:"temperature_2m_min"`
+		Sunrise          []string  `json:"sunrise"`
+		Sunset           []string  `json:"sunset"`
 	} `json:"daily"`
 }
 
@@ -111,6 +117,8 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		DailyWeatherCode:    forecast.Daily.WeatherCode,
 		DailyTemperatureMax: forecast.Daily.Temperature2mMax,
 		DailyTemperatureMin: forecast.Daily.Temperature2mMin,
+		Sunrise:             forecast.Daily.Sunrise[currentDayIndex],
+		Sunset:              forecast.Daily.Sunset[currentDayIndex],
 		UTCOffsetSeconds:    forecast.UTCOffsetSeconds,
 	}
 
@@ -194,7 +202,7 @@ func fetchIPLocation() (ipLocation, error) {
 
 func fetchForecast(lat, lon float64) (openMeteoResponse, error) {
 	url := fmt.Sprintf(
-		"%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7&timezone=auto",
+		weatherForecastQueryFormat,
 		weatherForecastURL, lat, lon,
 	)
 

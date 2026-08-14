@@ -12,6 +12,8 @@ export namespace main {
 	    dailyWeatherCode: number[];
 	    dailyTemperatureMax: number[];
 	    dailyTemperatureMin: number[];
+	    sunrise: string;
+	    sunset: string;
 	    hourlyTime: string[];
 	    hourlyTemperature: number[];
 	    hourlyWeatherCode: number[];
@@ -34,6 +36,8 @@ export namespace main {
 	        this.dailyWeatherCode = source["dailyWeatherCode"];
 	        this.dailyTemperatureMax = source["dailyTemperatureMax"];
 	        this.dailyTemperatureMin = source["dailyTemperatureMin"];
+	        this.sunrise = source["sunrise"];
+	        this.sunset = source["sunset"];
 	        this.hourlyTime = source["hourlyTime"];
 	        this.hourlyTemperature = source["hourlyTemperature"];
 	        this.hourlyWeatherCode = source["hourlyWeatherCode"];
