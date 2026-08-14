@@ -363,7 +363,7 @@
     </div>
   {/if}
 
-  <div class="content">
+  <div class="content" style:container-type={calendarDayContainerType}>
     {#if activeWidget === null}
       <div
         class="tiles"
@@ -1040,17 +1040,17 @@
   .calendar {
     --calendar-width: 100%;
     --calendar-height: 100%;
-    --calendar-gap: 0.75rem;
-    --calendar-padding: 1.25rem;
+    --calendar-gap: min(0.75rem, 2.5cqh);
+    --calendar-padding: min(1.25rem, 4cqh);
     --calendar-radius: 1rem;
     --calendar-background: transparent;
     --calendar-border: none;
-    --calendar-day-radius: 0.75rem;
+    --calendar-day-radius: min(0.75rem, 6cqh);
     --calendar-day-background: transparent;
     --calendar-day-border: 1px solid rgba(74, 63, 102, 0.16);
     --calendar-weekend-background: rgba(217, 236, 249, 0.58);
-    --calendar-title-size: clamp(1.25rem, 3vw, 2rem);
-    --calendar-weekday-size: 0.8rem;
+    --calendar-title-size: min(clamp(1.25rem, 3vw, 2rem), 8cqh);
+    --calendar-weekday-size: min(0.8rem, 4cqh);
     --calendar-menu-width: 10rem;
     --calendar-menu-background: rgba(255, 255, 255, 0.92);
     --calendar-menu-shadow: 0 0.75rem 2rem rgba(74, 63, 102, 0.16);
@@ -1063,14 +1063,16 @@
     --calendar-today-background: #ffe1ec;
     --calendar-today-color: #4a3f66;
     --calendar-week-width: 1.25rem;
-    --calendar-week-number-size: 0.7rem;
+    --calendar-week-number-size: min(0.7rem, 4cqh);
     --calendar-grid-columns: var(--calendar-week-width) repeat(7, minmax(0, 1fr));
     --calendar-week-column: 1;
     --calendar-first-day-column: 2;
-    --calendar-event-gap: 0.25rem;
+    --calendar-event-gap: min(0.25rem, 5cqw);
     --calendar-event-size: clamp(1.5rem, 3vw, 2.5rem);
     --calendar-day-size: 1rem;
+    --calendar-row-min-height: min(2rem, 10cqh);
     --calendar-day-height-size: 45cqh;
+    --calendar-event-width-size: 40cqw;
     --calendar-event-height-size: 35cqh;
     --calendar-event-height-gap: 5cqh;
     --calendar-day-line-height: 1;
@@ -1157,7 +1159,8 @@
     position: relative;
     flex: 1;
     min-height: var(--calendar-zero);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .calendar__month {
@@ -1178,7 +1181,7 @@
   .calendar__grid {
     flex: 1;
     min-height: var(--calendar-zero);
-    grid-auto-rows: minmax(var(--calendar-zero), 1fr);
+    grid-auto-rows: minmax(var(--calendar-row-min-height), 1fr);
   }
 
   .calendar__weekdays {
@@ -1222,9 +1225,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: var(--calendar-width);
+    box-sizing: border-box;
     gap: var(--calendar-event-gap);
     margin-block: min(var(--calendar-event-gap), var(--calendar-event-height-gap));
-    font-size: min(var(--calendar-event-size), var(--calendar-event-height-size));
+    font-size: min(var(--calendar-event-size), var(--calendar-event-width-size), var(--calendar-event-height-size));
     line-height: 1;
   }
 
