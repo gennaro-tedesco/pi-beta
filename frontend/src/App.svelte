@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
   import { fly, scale } from 'svelte/transition'
-  import { CalendarDays, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
+  import { CalendarSync, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
   import { Button, Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
@@ -53,6 +53,8 @@
 
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
   const weatherActionIconSize = 18
+  const calendarActionIconScale = 2
+  const calendarActionIconSize = weatherActionIconSize * calendarActionIconScale
   const currentLocationLabel = 'Use current IP location'
   const homeLogoSrc = '/images/logo.png'
   const calendarTitle = 'Calendar'
@@ -68,6 +70,11 @@
   const nextMonthOffset = 1
   const nextDayOffset = 1
   const calendarSwipeThresholdPx = 48
+  const tileSwipeThresholdPx = calendarSwipeThresholdPx
+  const previousTileOffset = -1
+  const nextTileOffset = 1
+  const tileSwipeClickResetDelayMs = 0
+  const tileScrollBehavior: ScrollBehavior = 'smooth'
   const calendarMonthTransitionDistancePx = 56
   const calendarMonthTransitionDurationMs = 300
   const calendarDropdownFadeOutDurationMs = 1000
@@ -115,6 +122,8 @@
   let currentDate = new Date()
   let calendarCursor = new Date(currentDate.getFullYear(), currentDate.getMonth(), firstDayOfMonth)
   let calendarSwipeStartX: number | null = null
+  let tileSwipeStartX: number | null = null
+  let tileSwipeConsumed = false
   let calendarTransitionDirection = calendarJumpTransitionDirection
   let calendarTransitionOutDurationMs = calendarMonthTransitionDurationMs
   let showMonthPicker = false
@@ -229,6 +238,43 @@
     calendarSwipeStartX = null
   }
 
+  function handleTilesPointerDown(event: PointerEvent): void {
+    tileSwipeStartX = event.clientX
+    tileSwipeConsumed = false
+  }
+
+  function scrollTiles(tiles: HTMLElement, offset: number): void {
+    const tileElements = Array.from(tiles.children) as HTMLElement[]
+    const firstTile = tileElements[0]
+    const secondTile = tileElements[1]
+    if (!firstTile || !secondTile) return
+
+    const tileStride = secondTile.offsetLeft - firstTile.offsetLeft
+    tiles.scrollBy({ left: offset * tileStride, behavior: tileScrollBehavior })
+  }
+
+  function handleTilesPointerUp(event: PointerEvent): void {
+    if (tileSwipeStartX === null) return
+
+    const horizontalDistance = event.clientX - tileSwipeStartX
+    tileSwipeStartX = null
+
+    if (horizontalDistance >= tileSwipeThresholdPx) {
+      tileSwipeConsumed = true
+      scrollTiles(event.currentTarget as HTMLElement, previousTileOffset)
+    } else if (horizontalDistance <= -tileSwipeThresholdPx) {
+      tileSwipeConsumed = true
+      scrollTiles(event.currentTarget as HTMLElement, nextTileOffset)
+    }
+
+    if (tileSwipeConsumed) window.setTimeout(() => tileSwipeConsumed = false, tileSwipeClickResetDelayMs)
+  }
+
+  function cancelTileSwipe(): void {
+    tileSwipeStartX = null
+    tileSwipeConsumed = false
+  }
+
   function toggleMonthPicker(): void {
     showMonthPicker = !showMonthPicker
   }
@@ -259,6 +305,11 @@
   }
 
   function maximize(id: WidgetId): void {
+    if (tileSwipeConsumed) {
+      tileSwipeConsumed = false
+      return
+    }
+
     activeWidget = id
   }
 
@@ -356,7 +407,7 @@
       {:else if activeWidget === calendarWidgetId}
         <div class="nav__actions">
           <Button ghost on:click={goToToday} aria-label={todayButtonLabel}>
-            <CalendarDays size={weatherActionIconSize} />
+            <CalendarSync size={calendarActionIconSize} />
           </Button>
         </div>
       {/if}
@@ -367,6 +418,9 @@
     {#if activeWidget === null}
       <div
         class="tiles"
+        on:pointerdown={handleTilesPointerDown}
+        on:pointerup={handleTilesPointerUp}
+        on:pointercancel={cancelTileSwipe}
         out:scale={{ duration: transitionDuration }}
         in:scale={{ duration: transitionDuration, delay: transitionDuration }}
       >
@@ -643,17 +697,37 @@
     --tile-width: clamp(13rem, 27vw, 24rem);
     --tile-column-count: 3;
     --tiles-width: 100%;
+    --tiles-horizontal-overflow: auto;
+    --tiles-justification: safe center;
+    --tiles-overscroll-behavior: contain;
+    --tiles-scroll-snap-type: x mandatory;
+    --tiles-scrollbar-visibility: none;
+    --tiles-touch-action: pan-y;
     display: grid;
     grid-template-columns: repeat(var(--tile-column-count), var(--tile-width));
-    justify-content: center;
+    justify-content: var(--tiles-justification);
     width: var(--tiles-width);
     gap: 1rem;
+    overflow-x: var(--tiles-horizontal-overflow);
+    overscroll-behavior-x: var(--tiles-overscroll-behavior);
+    scrollbar-width: var(--tiles-scrollbar-visibility);
+    -ms-overflow-style: var(--tiles-scrollbar-visibility);
+    scroll-snap-type: var(--tiles-scroll-snap-type);
+    touch-action: var(--tiles-touch-action);
+  }
+
+  .tiles::-webkit-scrollbar {
+    display: var(--tiles-scrollbar-visibility);
   }
 
   .tiles :global(.tile) {
+    --tile-scroll-snap-alignment: start;
+    --tile-scroll-snap-stop: always;
     flex: 0 0 auto;
     height: var(--tile-height);
     width: var(--tile-width);
+    scroll-snap-align: var(--tile-scroll-snap-alignment);
+    scroll-snap-stop: var(--tile-scroll-snap-stop);
   }
 
   .tiles :global(.tile__slideshow) {
