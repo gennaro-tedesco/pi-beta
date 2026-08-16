@@ -15,7 +15,9 @@ env:
   APPLICATION_TITLE: Pi Beta
   GO_VERSION: "1.25"
   LINUX_ARCHITECTURE: arm64
+  LINUX_ARTIFACT: release-linux
   LINUX_ASSET: pi-beta-linux-arm64.deb
+  MACOS_ARTIFACT: release-macos
   MACOS_ASSET: pi-beta-macos-arm64.dmg
   NODE_VERSION: "22"
   WAILS_VERSION: v2.14.0
@@ -50,7 +52,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: release-macos
+          name: ${{ env.MACOS_ARTIFACT }}
           path: ${{ env.MACOS_ASSET }}
           retention-days: 1
 
@@ -110,7 +112,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: release-linux
+          name: ${{ env.LINUX_ARTIFACT }}
           path: ${{ env.LINUX_ASSET }}
           retention-days: 1
 
@@ -121,14 +123,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: release-*
-          path: release
-          merge-multiple: true
+      - name: Download release assets
+        run: |
+          mkdir -p release
+          gh run download "$GITHUB_RUN_ID" --name "$MACOS_ARTIFACT" --dir release
+          gh run download "$GITHUB_RUN_ID" --name "$LINUX_ARTIFACT" --dir release
 
       - name: Publish release
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" release/* --generate-notes --title "$GITHUB_REF_NAME" --verify-tag
