@@ -8,6 +8,8 @@ export namespace main {
 	    windSpeed: number;
 	    rainProbability: number;
 	    uvIndex: number;
+	    pressure: number;
+	    airQuality: number;
 	    dailyTime: string[];
 	    dailyWeatherCode: number[];
 	    dailyTemperatureMax: number[];
@@ -32,6 +34,8 @@ export namespace main {
 	        this.windSpeed = source["windSpeed"];
 	        this.rainProbability = source["rainProbability"];
 	        this.uvIndex = source["uvIndex"];
+	        this.pressure = source["pressure"];
+	        this.airQuality = source["airQuality"];
 	        this.dailyTime = source["dailyTime"];
 	        this.dailyWeatherCode = source["dailyWeatherCode"];
 	        this.dailyTemperatureMax = source["dailyTemperatureMax"];

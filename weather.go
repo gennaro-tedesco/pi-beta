@@ -10,6 +10,7 @@ import (
 
 const ipLocationURL = "http://ip-api.com/json/"
 const weatherForecastURL = "https://api.open-meteo.com/v1/forecast"
+const airQualityURL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 const reverseGeocodeURL = "https://nominatim.openstreetmap.org/reverse"
 const reverseGeocodeUserAgent = "pi-beta-weather-dashboard"
 const reverseGeocodeZoom = 10
@@ -17,7 +18,8 @@ const weatherHTTPTimeout = 5 * time.Second
 const invalidUVDataMessage = "forecast response does not contain UV data for the current time"
 const currentDayIndex = 0
 const hourlyForecastWindow = 24
-const weatherForecastQueryFormat = "%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=8&timezone=auto"
+const weatherForecastQueryFormat = "%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability,surface_pressure&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=8&timezone=auto"
+const airQualityQueryFormat = "%s?latitude=%f&longitude=%f&current=us_aqi"
 
 var weatherHTTPClient = &http.Client{Timeout: weatherHTTPTimeout}
 
@@ -29,6 +31,8 @@ type Weather struct {
 	WindSpeed           float64   `json:"windSpeed"`
 	RainProbability     int       `json:"rainProbability"`
 	UVIndex             float64   `json:"uvIndex"`
+	Pressure            float64   `json:"pressure"`
+	AirQuality          float64   `json:"airQuality"`
 	DailyTime           []string  `json:"dailyTime"`
 	DailyWeatherCode    []int     `json:"dailyWeatherCode"`
 	DailyTemperatureMax []float64 `json:"dailyTemperatureMax"`
@@ -65,6 +69,7 @@ type openMeteoResponse struct {
 		IsDay           int     `json:"is_day"`
 		WindSpeed10m    float64 `json:"wind_speed_10m"`
 		RainProbability int     `json:"precipitation_probability"`
+		SurfacePressure float64 `json:"surface_pressure"`
 	} `json:"current"`
 	Hourly struct {
 		Time          []string  `json:"time"`
@@ -80,6 +85,12 @@ type openMeteoResponse struct {
 		Sunrise          []string  `json:"sunrise"`
 		Sunset           []string  `json:"sunset"`
 	} `json:"daily"`
+}
+
+type airQualityResponse struct {
+	Current struct {
+		USAQI float64 `json:"us_aqi"`
+	} `json:"current"`
 }
 
 func (a *App) GetWeather() (Weather, error) {
@@ -105,6 +116,10 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 	if err != nil {
 		return Weather{}, err
 	}
+	airQuality, err := fetchAirQuality(lat, lon)
+	if err != nil {
+		return Weather{}, err
+	}
 
 	result := Weather{
 		City:                city,
@@ -113,6 +128,8 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		IsDay:               forecast.Current.IsDay == 1,
 		WindSpeed:           forecast.Current.WindSpeed10m,
 		RainProbability:     forecast.Current.RainProbability,
+		Pressure:            forecast.Current.SurfacePressure,
+		AirQuality:          airQuality.Current.USAQI,
 		DailyTime:           forecast.Daily.Time,
 		DailyWeatherCode:    forecast.Daily.WeatherCode,
 		DailyTemperatureMax: forecast.Daily.Temperature2mMax,
@@ -221,6 +238,26 @@ func fetchForecast(lat, lon float64) (openMeteoResponse, error) {
 	}
 
 	return forecast, nil
+}
+
+func fetchAirQuality(lat, lon float64) (airQualityResponse, error) {
+	url := fmt.Sprintf(airQualityQueryFormat, airQualityURL, lat, lon)
+	resp, err := weatherHTTPClient.Get(url)
+	if err != nil {
+		return airQualityResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return airQualityResponse{}, fmt.Errorf("air quality request failed: %s", resp.Status)
+	}
+
+	var airQuality airQualityResponse
+	if err := json.NewDecoder(resp.Body).Decode(&airQuality); err != nil {
+		return airQualityResponse{}, err
+	}
+
+	return airQuality, nil
 }
 
 func indexOf(values []string, target string) int {

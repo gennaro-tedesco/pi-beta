@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { Droplets, MoonStar, Sun, SunMedium, Wind } from 'lucide-svelte'
+  import { CircleGauge, Droplets, Leaf, MoonStar, Sun, SunMedium, Wind } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
   import { Message } from '../components'
@@ -88,7 +88,7 @@
   }
 
   function formatChartHourLabel(dateString: string): string {
-    return new Date(dateString).toLocaleTimeString(undefined, { hour: 'numeric', hour12: true })
+    return new Date(dateString).getHours().toString()
   }
 
   function buildChartPoints(temperatures: number[]): ChartPoint[] {
@@ -265,6 +265,16 @@
               <span class="detail__label">UV Index</span>
               <span class="detail__value">{weather.uvIndex}</span>
             </div>
+            <div class="detail">
+              <CircleGauge size={detailIconSize} />
+              <span class="detail__label">Pressure</span>
+              <span class="detail__value">{Math.round(weather.pressure)} hPa</span>
+            </div>
+            <div class="detail">
+              <Leaf size={detailIconSize} />
+              <span class="detail__label">Air Quality</span>
+              <span class="detail__value">{Math.round(weather.airQuality)} AQI</span>
+            </div>
           </div>
         </div>
       </div>
@@ -384,6 +394,8 @@
     --condition-font-size: clamp(1rem, 3.5cqh, 1.75rem);
     --detail-row-gap: min(1rem, 2.5cqh);
     --detail-gap: min(1rem, 1.5cqw);
+    --detail-icon-column-width: min(2rem, 4cqw);
+    --detail-label-column-width: min(7rem, 10cqw);
     --forecast-gap: min(1rem, 1.5cqw);
     --forecast-card-gap: min(0.35rem, 0.5cqh);
     --forecast-card-padding-block: min(0.5rem, 1cqh);
@@ -630,19 +642,25 @@
   .detail {
     position: relative;
     z-index: var(--detail-layer);
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--detail-icon-column-width) var(--detail-label-column-width) minmax(var(--minimum-size), var(--grid-flexible-track));
     align-items: center;
     gap: var(--detail-gap);
   }
 
+  .detail :global(.lucide) {
+    justify-self: end;
+  }
+
   .detail__label {
-    flex: 1;
     opacity: 0.8;
+    text-align: left;
     white-space: nowrap;
   }
 
   .detail__value {
     font-weight: 600;
+    text-align: left;
     white-space: nowrap;
   }
 
