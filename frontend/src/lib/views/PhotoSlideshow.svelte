@@ -1,14 +1,18 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
   import { fade, scale } from 'svelte/transition'
-  import { Rabbit, Turtle } from 'lucide-svelte'
+  import { FolderOpen, Rabbit, Turtle } from 'lucide-svelte'
+  import { Button } from '../components'
   import { transitionDuration } from '../transition'
-  import { ListPhotos } from '../../../wailsjs/go/main/App'
+  import { ChoosePhotosFolder, ListPhotos } from '../../../wailsjs/go/main/App'
 
   const minSlideDuration = 2000
   const maxSlideDuration = 12000
   const swipeThreshold = 60
   const speedIconSize = 12
+  const pickerIconSize = 18
+  const chooseFolderLabel = 'Choose photos folder'
+  const photosRoutePrefix = '/photos/'
 
   let photos: string[] = []
   let slideDuration = 6000
@@ -47,10 +51,19 @@
     }
   }
 
-  onMount(async () => {
+  async function loadPhotos(): Promise<void> {
     const names = await ListPhotos()
-    photos = names.map((name) => `/images/${name}`)
-  })
+    photos = names.map((name) => `${photosRoutePrefix}${name}`)
+    activeIndex = 0
+  }
+
+  export async function chooseFolder(): Promise<void> {
+    const selected = await ChoosePhotosFolder()
+    if (!selected) return
+    await loadPhotos()
+  }
+
+  onMount(loadPhotos)
 
   $: slideDuration, restartTimer()
 
@@ -67,7 +80,12 @@
   on:touchend={handleDragEnd}
 >
   {#if photos.length === 0}
-    <p class="slideshow__empty">Add photos to the images folder to start the slideshow</p>
+    <div class="slideshow__picker">
+      <Button on:click={chooseFolder}>
+        <FolderOpen size={pickerIconSize} />
+        <span>{chooseFolderLabel}</span>
+      </Button>
+    </div>
   {/if}
 
   {#each photos as photo, index (photo)}
@@ -114,16 +132,22 @@
     touch-action: none;
   }
 
-  .slideshow__empty {
+  .slideshow__picker {
+    --slideshow-picker-gap: 0.5rem;
+    --slideshow-picker-font-size: clamp(0.9rem, 2vw, 1.1rem);
+    --slideshow-picker-padding-x: 2rem;
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0;
-    padding: 0 2rem;
-    text-align: center;
+    padding: 0 var(--slideshow-picker-padding-x);
     color: #4a3f66;
+  }
+
+  .slideshow__picker :global(.button) {
+    gap: var(--slideshow-picker-gap);
+    font-size: var(--slideshow-picker-font-size);
   }
 
   .slideshow__photo {

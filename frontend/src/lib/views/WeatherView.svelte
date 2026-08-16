@@ -339,7 +339,7 @@
     --minimum-size: 0;
     --grid-flexible-track: 1fr;
     --forecast-day-count: 7;
-    --weather-overflow: hidden;
+    --weather-overflow: hidden auto;
     --chart-height: min(3rem, 7cqh);
     --chart-gap: min(0.75rem, 1.5cqw);
     --chart-scale-width: min(3rem, 4cqw);

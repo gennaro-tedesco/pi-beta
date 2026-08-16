@@ -5,10 +5,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-const photosDir = "images"
+const defaultPhotosDir = "images"
 const logoFilename = "logo.png"
+const choosePhotosFolderTitle = "Choose a folder containing photos"
+
+var photosDir = defaultPhotosDir
 
 var photoExtensions = map[string]bool{
 	".jpg":  true,
@@ -37,4 +42,16 @@ func (a *App) ListPhotos() ([]string, error) {
 	sort.Strings(photos)
 
 	return photos, nil
+}
+
+func (a *App) ChoosePhotosFolder() (string, error) {
+	selected, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: choosePhotosFolderTitle,
+	})
+	if err != nil || selected == "" {
+		return "", err
+	}
+
+	photosDir = selected
+	return photosDir, nil
 }

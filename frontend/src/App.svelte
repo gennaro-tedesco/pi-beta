@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
   import { fly, scale } from 'svelte/transition'
-  import { CalendarSync, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
+  import { CalendarSync, FolderOpen, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
   import { Button, Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
@@ -55,6 +55,7 @@
   const calendarActionIconScale = 2
   const calendarActionIconSize = weatherActionIconSize * calendarActionIconScale
   const currentLocationLabel = 'Use current IP location'
+  const changePhotosFolderLabel = 'Change photos folder'
   const homeLogoSrc = '/images/logo.png'
   const calendarTitle = 'Calendar'
   const calendarWidgetId = 'calendar'
@@ -116,6 +117,7 @@
   let activeWidget: WidgetId | null = null
   let weatherScene: WeatherScene | null = null
   let weatherViewRef: WeatherView
+  let photoSlideshowRef: PhotoSlideshow
   let selectedCoords: Coords | null = null
   let showCityPicker = false
   let currentDate = new Date()
@@ -406,6 +408,12 @@
             <CalendarSync size={calendarActionIconSize} />
           </Button>
         </div>
+      {:else if activeWidget === 'photos'}
+        <div class="nav__actions">
+          <Button ghost on:click={() => photoSlideshowRef?.chooseFolder()} aria-label={changePhotosFolderLabel}>
+            <FolderOpen size={weatherActionIconSize} />
+          </Button>
+        </div>
       {/if}
     </div>
   {/if}
@@ -468,7 +476,7 @@
     {:else if activeWidget === 'weather'}
       <WeatherView bind:this={weatherViewRef} coords={selectedCoords} on:scene={handleWeatherScene} />
     {:else if activeWidget === 'photos'}
-      <PhotoSlideshow />
+      <PhotoSlideshow bind:this={photoSlideshowRef} />
     {:else if activeWidget === calendarWidgetId}
       <section
         class="calendar"

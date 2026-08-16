@@ -17,12 +17,20 @@ const (
 	windowHeight = 768
 )
 
+const (
+	imagesRoutePrefix = "/images/"
+	photosRoutePrefix = "/photos/"
+)
+
 func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
 	photosHandler := http.NewServeMux()
-	photosHandler.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(photosDir))))
+	photosHandler.Handle(imagesRoutePrefix, http.StripPrefix(imagesRoutePrefix, http.FileServer(http.Dir(defaultPhotosDir))))
+	photosHandler.HandleFunc(photosRoutePrefix, func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(photosDir))).ServeHTTP(w, r)
+	})
 
 	// Create application with options
 	err := wails.Run(&options.App{
@@ -34,6 +42,7 @@ func main() {
 			Handler: photosHandler,
 		},
 		BackgroundColour: &colorBackground,
+		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
 		},

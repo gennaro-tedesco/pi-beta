@@ -313,28 +313,36 @@
 
   .picker__header {
     --header-padding: 1rem;
+    --header-minimum-size: 0;
+    --header-side-column: minmax(0, 1fr);
+    --header-search-column: 2;
+    --search-width: min(24rem, 50vw);
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--header-side-column) minmax(0, var(--search-width)) var(--header-side-column);
     align-items: center;
-    justify-content: space-between;
     padding: var(--header-padding);
   }
 
   .picker__title {
+    min-width: var(--header-minimum-size);
     font-size: 1.1rem;
     font-weight: 600;
   }
 
   .picker__search {
-    --search-width: min(24rem, 50vw);
     --search-layer: 1000;
     --search-gap: 0.25rem;
     --search-radius: 6px;
-    position: absolute;
+    position: relative;
     z-index: var(--search-layer);
-    left: 50%;
+    grid-column: var(--header-search-column);
     width: var(--search-width);
-    transform: translateX(-50%);
+    max-width: var(--picker-width);
+  }
+
+  .picker__header > :global(.button) {
+    justify-self: end;
   }
 
   .picker__search input {
