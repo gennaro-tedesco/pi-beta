@@ -51,7 +51,6 @@
     { top: 28, left: 92, delay: 1.5 }
   ]
 
-  const windEffects = ['wind-one', 'wind-two', 'wind-three']
   const weatherActionIconSize = 18
   const calendarActionIconScale = 2
   const calendarActionIconSize = weatherActionIconSize * calendarActionIconScale
@@ -378,9 +377,6 @@
           <span class="sky__star" style="top: {star.top}%; left: {star.left}%; animation-delay: {star.delay}s;" />
         {/each}
       {/if}
-      {#each windEffects.slice(0, weatherScene.windEffectCount) as effect}
-        <img class="sky__weather sky__weather--{effect}" src={weatherScene.windAnimation} alt="" />
-      {/each}
       {#if weatherScene.rainAnimation}
         <img class="sky__weather sky__weather--rain" src={weatherScene.rainAnimation} alt="" />
       {/if}
@@ -615,9 +611,10 @@
   }
 
   .sky {
-    --wind-animation-size: clamp(8rem, 18vw, 16rem);
     --rain-animation-size: clamp(8rem, 15vw, 13rem);
     --weather-animation-opacity: 0.58;
+    --moon-block-position: clamp(3.5rem, 8vh, 6rem);
+    --moon-inline-position: clamp(2rem, 8vw, 8rem);
     position: absolute;
     inset: 0;
     overflow: hidden;
@@ -626,28 +623,8 @@
 
   .sky__weather {
     position: absolute;
-    width: var(--wind-animation-size);
-    height: var(--wind-animation-size);
     opacity: var(--weather-animation-opacity);
     object-fit: contain;
-  }
-
-  .sky__weather--wind-one {
-    top: 12%;
-    left: 14%;
-    transform: rotate(-8deg);
-  }
-
-  .sky__weather--wind-two {
-    top: 9%;
-    right: 12%;
-    transform: rotate(12deg) scale(0.82);
-  }
-
-  .sky__weather--wind-three {
-    bottom: 7%;
-    left: 9%;
-    transform: rotate(7deg) scale(1.12);
   }
 
   .sky__weather--rain {
@@ -659,9 +636,8 @@
 
   .sky :global(.sky__moon) {
     position: absolute;
-    top: 4rem;
-    left: 50%;
-    transform: translateX(-50%);
+    top: var(--moon-block-position);
+    left: var(--moon-inline-position);
     color: #f4f1de;
   }
 

@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { CalendarDays, Clock, Droplets, MoonStar, Sun, SunMedium } from 'lucide-svelte'
+  import { Droplets, MoonStar, Sun, SunMedium, Wind } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
-  import { Button, Message } from '../components'
+  import { Message } from '../components'
   import { getWeatherIcon } from './weatherIcon'
   import { getWeatherScene, type WeatherScene } from './weatherScene'
   import { transitionDuration } from '../transition'
@@ -18,23 +18,38 @@
   const maximumSunProgress = 1
   const sunArcHeightPercent = 94
   const sunIconSize = 18
+  const detailIconSize = 18
   const sunPath = 'M 1 63 Q 50 -58 99 63'
   const sunViewBox = '0 0 100 64'
   const sunAspectRatio = 'none'
   const sunCycleLabel = "Today's sunrise and sunset"
   const weatherContainerType = 'size'
+  const forecastCardContainerType = 'inline-size'
   const timestampHourStart = 11
   const timestampMinuteEnd = 16
   const timestampUTCDesignator = ':00Z'
   const percentageScale = 100
+  const chartViewBoxWidth = 100
+  const chartViewBoxHeight = 40
+  const chartVerticalPadding = 0.18
+  const chartLabelIntervalHours = 2
+  const chartGradientId = 'weather-chart-gradient'
+  const windEffects = ['wind-one', 'wind-two', 'wind-three']
+
+  interface ChartPoint {
+    x: number
+    y: number
+  }
+
+  interface ChartLabel {
+    x: number
+    label: string
+    align: 'start' | 'center'
+  }
 
   let weather: main.Weather | null = null
   let error: string | null = null
   let loading = true
-  let forecastView: 'day' | 'week' = 'day'
-  let hourlyList: HTMLDivElement
-  let dragStartY: number | null = null
-  let dragStartScrollTop = 0
   let cityClockNow = Date.now()
   let cityClockTimer: ReturnType<typeof setInterval>
 
@@ -58,33 +73,70 @@
     return new Date(dateString).toLocaleDateString(undefined, { weekday: 'short' })
   }
 
-  function formatHourLabel(dateString: string): string {
-    return new Date(dateString).toLocaleTimeString(undefined, { hour: '2-digit', hourCycle: 'h23' })
-  }
-
-  function handleListPointerDown(event: PointerEvent): void {
-    if (forecastView !== 'day') return
-    dragStartY = event.clientY
-    dragStartScrollTop = hourlyList.scrollTop
-    hourlyList.setPointerCapture(event.pointerId)
-  }
-
-  function handleListPointerMove(event: PointerEvent): void {
-    if (dragStartY === null) return
-    hourlyList.scrollTop = dragStartScrollTop - (event.clientY - dragStartY)
-  }
-
-  function handleListPointerUp(): void {
-    dragStartY = null
-  }
-
   function formatCityTime(nowMs: number, utcOffsetSeconds: number): string {
     const shifted = new Date(nowMs + utcOffsetSeconds * millisecondsPerSecond)
     return shifted.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hourCycle: 'h23' })
   }
 
+  function formatCityDate(nowMs: number, utcOffsetSeconds: number): string {
+    const shifted = new Date(nowMs + utcOffsetSeconds * millisecondsPerSecond)
+    return shifted.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: '2-digit', timeZone: 'UTC' })
+  }
+
   function formatSunTime(timestamp: string): string {
     return timestamp.slice(timestampHourStart, timestampMinuteEnd)
+  }
+
+  function formatChartHourLabel(dateString: string): string {
+    return new Date(dateString).toLocaleTimeString(undefined, { hour: 'numeric', hour12: true })
+  }
+
+  function buildChartPoints(temperatures: number[]): ChartPoint[] {
+    if (temperatures.length === 0) return []
+    const minTemperature = Math.min(...temperatures)
+    const maxTemperature = Math.max(...temperatures)
+    const range = maxTemperature - minTemperature
+    return temperatures.map((temperature, index) => {
+      const x = (index / (temperatures.length - 1 || 1)) * chartViewBoxWidth
+      const normalized = range === 0 ? 0.5 : (temperature - minTemperature) / range
+      const eased = chartVerticalPadding + normalized * (1 - 2 * chartVerticalPadding)
+      const y = chartViewBoxHeight - eased * chartViewBoxHeight
+      return { x, y }
+    })
+  }
+
+  function buildChartLinePath(points: ChartPoint[]): string {
+    if (points.length === 0) return ''
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+    let path = `M ${points[0].x} ${points[0].y}`
+    for (let index = 1; index < points.length; index++) {
+      const previous = points[index - 1]
+      const current = points[index]
+      const controlX = (previous.x + current.x) / 2
+      const controlY = (previous.y + current.y) / 2
+      path += ` Q ${previous.x} ${previous.y} ${controlX} ${controlY}`
+    }
+    const last = points[points.length - 1]
+    path += ` Q ${last.x} ${last.y} ${last.x} ${last.y}`
+    return path
+  }
+
+  function buildChartAreaPath(linePath: string, points: ChartPoint[]): string {
+    if (points.length === 0 || linePath === '') return ''
+    const first = points[0]
+    const last = points[points.length - 1]
+    return `${linePath} L ${last.x} ${chartViewBoxHeight} L ${first.x} ${chartViewBoxHeight} Z`
+  }
+
+  function buildChartLabels(times: string[], points: ChartPoint[]): ChartLabel[] {
+    return points
+      .map((point, index) => ({ point, index }))
+      .filter(({ index }) => index % chartLabelIntervalHours === 0)
+      .map(({ point, index }) => ({
+        x: point.x,
+        label: formatChartHourLabel(times[index]),
+        align: index === 0 ? 'start' as const : 'center' as const
+      }))
   }
 
   function getSunPosition(nowMs: number, utcOffsetSeconds: number, sunrise: string, sunset: string) {
@@ -121,9 +173,16 @@
     : null
   $: iconUrl = weather ? getWeatherIcon(weather.weatherCode, weather.isDay) : null
   $: cityTime = weather ? formatCityTime(cityClockNow, weather.utcOffsetSeconds) : null
+  $: cityDate = weather ? formatCityDate(cityClockNow, weather.utcOffsetSeconds) : null
   $: sunPosition = weather
     ? getSunPosition(cityClockNow, weather.utcOffsetSeconds, weather.sunrise, weather.sunset)
     : null
+  $: chartPoints = weather ? buildChartPoints(weather.hourlyTemperature) : []
+  $: chartLinePath = buildChartLinePath(chartPoints)
+  $: chartAreaPath = buildChartAreaPath(chartLinePath, chartPoints)
+  $: chartLabels = weather ? buildChartLabels(weather.hourlyTime, chartPoints) : []
+  $: chartMinTemperature = weather && weather.hourlyTemperature.length ? Math.min(...weather.hourlyTemperature) : null
+  $: chartMaxTemperature = weather && weather.hourlyTemperature.length ? Math.max(...weather.hourlyTemperature) : null
   $: dispatch('scene', scene)
 </script>
 
@@ -139,41 +198,6 @@
     <p class="loading">Loading weather…</p>
   {:else}
     <div class="weather__content">
-      <div class="weather__main">
-        <div class="card">
-          <div class="card__header">
-            <span class="card__city">{weather.city}</span>
-            {#if cityTime}<span class="card__time">{cityTime}</span>{/if}
-          </div>
-
-          <div class="card__scene">
-            <img class="card__icon" src={iconUrl} alt={scene.label} />
-            <span class="card__temperature">{Math.round(weather.temperature)}°</span>
-          </div>
-
-          <div class="card__footer">
-            <span class="card__range">
-              {Math.round(weather.dailyTemperatureMin[0])}°/{Math.round(weather.dailyTemperatureMax[0])}°
-            </span>
-            <span class="card__condition">{scene.label}</span>
-          </div>
-        </div>
-
-        <div class="details">
-          <div class="detail">
-            <span>{weather.windSpeed} km/h</span>
-          </div>
-          <div class="detail">
-            <Droplets size={18} />
-            <span>{weather.rainProbability}%</span>
-          </div>
-          <div class="detail">
-            <Sun size={18} />
-            <span>UV {weather.uvIndex}</span>
-          </div>
-        </div>
-      </div>
-
       <div class="sun-cycle" aria-label={sunCycleLabel}>
         <div class="sun-cycle__visual" aria-hidden="true">
           <svg class="sun-cycle__arc" viewBox={sunViewBox} preserveAspectRatio={sunAspectRatio}>
@@ -201,47 +225,91 @@
         </div>
       </div>
 
-      <div class="forecast">
-        <div class="forecast__toggle">
-          <Button ghost={forecastView !== 'day'} on:click={() => (forecastView = 'day')} aria-label="Hourly forecast">
-            <Clock size={18} />
-          </Button>
-          <Button ghost={forecastView !== 'week'} on:click={() => (forecastView = 'week')} aria-label="Weekly forecast">
-            <CalendarDays size={18} />
-          </Button>
-        </div>
+      <div class="weather__header">
+        <span class="weather__city">{weather.city}</span>
+        <span class="weather__date">
+          {cityDate}{#if cityTime}<span class="weather__time"> · {cityTime}</span>{/if}
+        </span>
+      </div>
 
-        <div
-          class="forecast__list"
-          class:forecast__list--scroll={forecastView === 'day'}
-          bind:this={hourlyList}
-          on:pointerdown={handleListPointerDown}
-          on:pointermove={handleListPointerMove}
-          on:pointerup={handleListPointerUp}
-          on:pointercancel={handleListPointerUp}
-        >
-          {#if forecastView === 'week'}
-            {#each weather.dailyTime as date, index (date)}
-              {#if index > 0}
-                <div class="forecast__row">
-                  <span class="forecast__day">{formatDayLabel(date)}</span>
-                  <img class="forecast__icon" src={getWeatherIcon(weather.dailyWeatherCode[index], true)} alt="" />
-                  <span class="forecast__temps">
-                    <span class="forecast__high">{Math.round(weather.dailyTemperatureMax[index])}°</span>/<span
-                      class="forecast__low">{Math.round(weather.dailyTemperatureMin[index])}°</span>
-                  </span>
-                </div>
-              {/if}
+      <div class="weather__main">
+        <div class="card">
+          <div class="card__scene">
+            <img class="card__icon" src={iconUrl} alt={scene.label} />
+          </div>
+
+          <div class="card__readout">
+            <span class="card__temperature">{Math.round(weather.temperature)}°</span>
+            <span class="card__condition">{scene.label}</span>
+            <span class="card__range">
+              {Math.round(weather.dailyTemperatureMin[0])}°/{Math.round(weather.dailyTemperatureMax[0])}°
+            </span>
+          </div>
+
+          <div class="details">
+            {#each windEffects.slice(0, scene.windEffectCount) as effect}
+              <img class="details__weather details__weather--{effect}" src={scene.windAnimation} alt="" />
             {/each}
-          {:else}
-            {#each weather.hourlyTime as time, index (time)}
-              <div class="forecast__row forecast__row--hourly">
-                <span class="forecast__day">{formatHourLabel(time)}</span>
-                <img class="forecast__icon" src={getWeatherIcon(weather.hourlyWeatherCode[index], true)} alt="" />
-                <span class="forecast__high">{Math.round(weather.hourlyTemperature[index])}°</span>
+            <div class="detail">
+              <Wind size={detailIconSize} />
+              <span class="detail__label">Wind</span>
+              <span class="detail__value">{weather.windSpeed} km/h</span>
+            </div>
+            <div class="detail">
+              <Droplets size={detailIconSize} />
+              <span class="detail__label">Rain</span>
+              <span class="detail__value">{weather.rainProbability}%</span>
+            </div>
+            <div class="detail">
+              <Sun size={detailIconSize} />
+              <span class="detail__label">UV Index</span>
+              <span class="detail__value">{weather.uvIndex}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart" aria-label="Hourly temperature trend">
+        <div class="chart__scale">
+          {#if chartMaxTemperature !== null}<span class="chart__scale-value">{Math.round(chartMaxTemperature)}°</span>{/if}
+          {#if chartMinTemperature !== null}<span class="chart__scale-value">{Math.round(chartMinTemperature)}°</span>{/if}
+        </div>
+        <div class="chart__plot">
+          <svg class="chart__svg" viewBox="0 0 {chartViewBoxWidth} {chartViewBoxHeight}" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id={chartGradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--chart-fill-color-top)" />
+                <stop offset="100%" stop-color="var(--chart-fill-color-bottom)" />
+              </linearGradient>
+            </defs>
+            <path class="chart__area" d={chartAreaPath} fill="url(#{chartGradientId})" />
+            <path class="chart__line" d={chartLinePath} />
+          </svg>
+          <div class="chart__labels">
+            {#each chartLabels as label (label.x)}
+              <span
+                class="chart__label"
+                style="left: {(label.x / chartViewBoxWidth) * 100}%; transform: translateX({label.align === 'start' ? '0' : '-50%'});"
+              >{label.label}</span>
+            {/each}
+          </div>
+        </div>
+      </div>
+
+      <div class="forecast">
+        <div class="forecast__row">
+          {#each weather.dailyTime as date, index (date)}
+            {#if index > 0}
+              <div class="forecast__card" style:container-type={forecastCardContainerType}>
+                <span class="forecast__day">{formatDayLabel(date)}</span>
+                <img class="forecast__icon" src={getWeatherIcon(weather.dailyWeatherCode[index], true)} alt="" />
+                <span class="forecast__temps">
+                  <span class="forecast__high">{Math.round(weather.dailyTemperatureMax[index])}°</span>/<span
+                    class="forecast__low">{Math.round(weather.dailyTemperatureMin[index])}°</span>
+                </span>
               </div>
-            {/each}
-          {/if}
+            {/if}
+          {/each}
         </div>
       </div>
     </div>
@@ -250,62 +318,88 @@
 
 <style>
   .weather {
-    --panel-width: min(300px, 38cqw, 62cqh);
-    --details-height: min(1.5rem, 6cqmin);
-    --sun-cycle-width: min(9rem, 22cqw, 36cqmin);
-    --sun-cycle-height: min(4.25rem, 17cqmin);
-    --sun-cycle-horizontal-position: 50%;
-    --sun-cycle-horizontal-offset: -50%;
-    --sun-cycle-vertical-position: 50%;
-    --sun-cycle-vertical-offset: -50%;
-    --panel-gap: min(1rem, 4cqmin);
-    --panel-height: calc(var(--panel-width) * 4 / 3 + var(--panel-gap) + var(--details-height));
+    --content-edge-margin: min(1rem, 2cqw);
+    --content-width: calc(100cqw - (2 * var(--content-edge-margin)));
+    --content-row-width: 100%;
+    --content-row-grow: 0;
+    --content-row-shrink: 0;
+    --dashboard-shrink: 1;
+    --dashboard-main-grow: 0;
+    --dashboard-main-basis: 100%;
+    --minimum-size: 0;
+    --grid-flexible-track: 1fr;
+    --forecast-day-count: 7;
+    --weather-overflow: hidden;
+    --chart-height: min(3rem, 7cqh);
+    --chart-gap: min(0.75rem, 1.5cqw);
+    --chart-scale-width: min(3rem, 4cqw);
+    --chart-label-font-size: clamp(0.65rem, 1.8cqh, 1rem);
+    --chart-label-row-height: min(1.1rem, 3cqh);
+    --chart-line-color: var(--sun-color);
+    --chart-line-width: 0.6;
+    --chart-fill-color-top: rgba(246, 183, 60, 0.45);
+    --chart-fill-color-bottom: rgba(246, 183, 60, 0);
+    --header-gap: min(0.25rem, 0.5cqh);
+    --sun-cycle-width: min(42rem, 52cqw);
+    --sun-cycle-gap: min(0.6rem, 1cqh);
+    --panel-gap: min(0.75rem, 1.2cqh, 1.5cqw);
+    --content-bottom-padding: min(0.75rem, 1.5cqh);
     --text-color: #4a3f66;
     --icon-glow-color: rgba(255, 255, 255, 0.35);
     --row-background: rgba(255, 255, 255, 0.5);
-    --hourly-row-gap: min(1.95rem, 8cqmin);
     --sun-arc-color: rgba(74, 63, 102, 0.3);
     --sun-color: #f6b73c;
     --sun-glow-color: rgba(246, 183, 60, 0.55);
-    --sun-glow-size: min(0.8rem, 3.2cqmin);
+    --sun-glow-size: min(2rem, 4cqh);
     --sun-motion-duration: 15s;
     --sun-entry-duration: 1.2s;
-    --sun-visual-height: min(2.5rem, 10cqmin);
+    --sun-visual-height: min(3rem, 7cqh);
     --sun-arc-stroke-width: 1;
     --sun-arc-length: 160;
     --minimum-sun-arc-offset: 0;
     --sun-marker-horizontal-offset: -50%;
     --sun-marker-vertical-offset: 50%;
     --sun-glow-duration: 2.4s;
-    --sun-time-font-size: min(0.8rem, 3.2cqmin);
-    --sun-time-gap: min(0.35rem, 1.4cqmin);
+    --sun-time-font-size: clamp(0.65rem, 1.6cqh, 0.9rem);
+    --sun-time-gap: min(0.35rem, 0.5cqh);
     --sun-event-animation-duration: 3.6s;
     --sun-event-rise-distance: max(-0.18rem, -0.72cqmin);
     --sun-event-set-distance: min(0.18rem, 0.72cqmin);
     --sun-event-dimmed-opacity: 0.72;
     --sun-dimmed-opacity: 0.8;
     --sun-full-opacity: 1;
-    --weather-font-size: min(1rem, 4cqmin);
-    --weather-icon-size: min(18px, 4.5cqmin);
-    --card-padding: min(1.25rem, 5cqmin);
-    --city-font-size: min(2.25rem, 9cqmin);
-    --secondary-font-size: min(0.9rem, 3.6cqmin);
-    --scene-margin: min(0.75rem, 3cqmin);
-    --scene-shadow-blur: min(28px, 7cqmin);
-    --temperature-offset: min(0.5rem, 2cqmin);
-    --temperature-font-size: min(3rem, 12cqmin);
-    --compact-gap: min(0.25rem, 1cqmin);
-    --condition-font-size: min(1.1rem, 4.4cqmin);
-    --details-gap: min(1.5rem, 6cqmin);
-    --detail-gap: min(0.4rem, 1.6cqmin);
-    --forecast-gap: min(0.5rem, 2cqmin);
-    --forecast-day-column: min(3rem, 12cqmin);
-    --forecast-hour-column: min(4rem, 16cqmin);
-    --forecast-icon-column: min(2rem, 8cqmin);
-    --forecast-row-padding-block: min(0.5rem, 2cqmin);
-    --forecast-row-padding-inline: min(0.75rem, 3cqmin);
-    --forecast-row-radius: min(8px, 2cqmin);
-    --forecast-icon-size: min(24px, 6cqmin);
+    --weather-font-size: clamp(0.7rem, 1.8cqh, 1rem);
+    --weather-icon-size: clamp(0.9rem, 3cqh, 1.5rem);
+    --card-padding: min(1rem, 2cqh, 2cqw);
+    --card-gap: min(3rem, 4cqw);
+    --card-section-min-width: min(10rem, 100%);
+    --city-font-size: clamp(1.35rem, 6cqh, 2.5rem);
+    --secondary-font-size: clamp(0.65rem, 1.8cqh, 1rem);
+    --scene-size: min(16rem, 32cqh, 20cqw);
+    --scene-art-size: 135%;
+    --scene-art-max-width: none;
+    --scene-shadow-blur: min(60px, 8cqh);
+    --temperature-font-size: clamp(2.75rem, 14cqh, 6rem);
+    --compact-gap: min(0.6rem, 1cqh);
+    --condition-font-size: clamp(1rem, 3.5cqh, 1.75rem);
+    --detail-row-gap: min(1rem, 2.5cqh);
+    --detail-gap: min(1rem, 1.5cqw);
+    --forecast-gap: min(1rem, 1.5cqw);
+    --forecast-card-gap: min(0.35rem, 0.5cqh);
+    --forecast-card-padding-block: min(0.5rem, 1cqh);
+    --forecast-card-padding-inline: min(0.75rem, 1cqw);
+    --forecast-card-border-width: 1px;
+    --forecast-card-border-color: rgba(74, 63, 102, 0.18);
+    --forecast-row-radius: min(16px, 2cqmin);
+    --forecast-icon-size: min(2.5rem, 5cqh, 54cqw);
+    --wind-decoration-opacity: 0.28;
+    --wind-decoration-size: min(12rem, 28cqw, 32cqh);
+    --wind-decoration-layer: 0;
+    --detail-layer: 1;
+    --wind-one-transform: rotate(-8deg) scale(1.05);
+    --wind-two-transform: rotate(6deg) scale(0.82);
+    --wind-three-transform: rotate(-3deg) scale(0.68);
+    --forecast-card-font-size: clamp(0.65rem, 1.8cqh, 0.85rem);
     --float-distance: min(6px, 1.5cqmin);
     display: flex;
     flex-direction: column;
@@ -314,6 +408,8 @@
     gap: var(--panel-gap);
     width: 100%;
     height: 100%;
+    min-height: var(--minimum-size);
+    overflow: var(--weather-overflow);
     font-size: var(--weather-font-size);
   }
 
@@ -324,82 +420,92 @@
   .weather__main {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: var(--panel-gap);
-    width: var(--panel-width);
-    height: var(--panel-height);
-    flex-shrink: 0;
+    flex: var(--dashboard-main-grow) var(--dashboard-shrink) var(--dashboard-main-basis);
+    min-width: var(--minimum-size);
   }
 
   .weather__content {
     position: relative;
     display: flex;
-    flex-direction: row;
+    flex-flow: row wrap;
     align-items: center;
-    justify-content: space-evenly;
-    width: 100%;
+    align-content: space-between;
+    justify-content: space-between;
+    gap: var(--panel-gap);
+    width: var(--content-width);
+    max-width: 100%;
     height: 100%;
+    min-height: var(--minimum-size);
+    box-sizing: border-box;
+    padding-bottom: var(--content-bottom-padding);
   }
 
-  .card {
-    position: relative;
+  .weather__header {
     display: flex;
     flex-direction: column;
-    width: 100%;
-    aspect-ratio: 3 / 4;
-    box-sizing: border-box;
-    padding: var(--card-padding);
-    color: var(--text-color);
-    overflow: hidden;
-  }
-
-  .card__header {
-    display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: var(--header-gap);
+    flex: var(--content-row-grow) var(--content-row-shrink) var(--content-row-width);
+    color: var(--text-color);
+    text-align: center;
   }
 
-  .card__city {
+  .weather__city {
     font-size: var(--city-font-size);
     font-weight: 600;
   }
 
-  .card__time {
+  .weather__date {
     font-size: var(--secondary-font-size);
     opacity: 0.9;
   }
 
+  .card {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--card-section-min-width), var(--grid-flexible-track)));
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: var(--card-padding);
+    gap: var(--card-gap);
+    color: var(--text-color);
+  }
+
   .card__scene {
     position: relative;
-    flex: 1;
-    min-height: 0;
+    flex: 0 0 auto;
+    width: var(--scene-size);
+    height: var(--scene-size);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: var(--scene-margin) 0;
+    justify-self: center;
   }
 
   .card__icon {
-    width: 92%;
-    height: 92%;
+    flex-shrink: var(--content-row-shrink);
+    width: var(--scene-art-size);
+    height: var(--scene-art-size);
+    max-width: var(--scene-art-max-width);
     object-fit: contain;
     filter: drop-shadow(0 0 var(--scene-shadow-blur) var(--icon-glow-color));
     animation: floatIcon 6s ease-in-out infinite;
   }
 
+  .card__readout {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--compact-gap);
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
   .card__temperature {
-    position: absolute;
-    top: var(--temperature-offset);
-    left: 0;
     font-size: var(--temperature-font-size);
     font-weight: 700;
     line-height: 1;
-  }
-
-  .card__footer {
-    display: flex;
-    flex-direction: column;
-    gap: var(--compact-gap);
   }
 
   .card__range {
@@ -413,31 +519,56 @@
   }
 
   .details {
+    position: relative;
+    isolation: isolate;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--details-gap);
-    width: 100%;
-    height: var(--details-height);
+    flex-direction: column;
+    gap: var(--detail-row-gap);
+    flex: 0 0 auto;
+  }
+
+  .details__weather {
+    position: absolute;
+    z-index: var(--wind-decoration-layer);
+    top: 50%;
+    left: 50%;
+    width: var(--wind-decoration-size);
+    height: var(--wind-decoration-size);
+    opacity: var(--wind-decoration-opacity);
+    object-fit: contain;
+    pointer-events: none;
+  }
+
+  .details__weather--wind-one {
+    transform: translate(-50%, -50%) var(--wind-one-transform);
+  }
+
+  .details__weather--wind-two {
+    transform: translate(-50%, -50%) var(--wind-two-transform);
+  }
+
+  .details__weather--wind-three {
+    transform: translate(-50%, -50%) var(--wind-three-transform);
   }
 
   .sun-cycle {
-    position: absolute;
-    top: var(--sun-cycle-vertical-position);
-    left: var(--sun-cycle-horizontal-position);
+    position: relative;
+    align-self: center;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    flex: var(--content-row-grow) var(--content-row-shrink) var(--content-row-width);
+    align-items: center;
+    gap: var(--sun-cycle-gap);
     width: var(--sun-cycle-width);
-    height: var(--sun-cycle-height);
+    max-width: 100%;
     color: var(--text-color);
-    transform: translate(var(--sun-cycle-horizontal-offset), var(--sun-cycle-vertical-offset));
     pointer-events: none;
   }
 
   .sun-cycle__visual {
     position: relative;
-    width: 100%;
+    width: var(--sun-cycle-width);
+    max-width: 100%;
     height: var(--sun-visual-height);
   }
 
@@ -472,6 +603,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: var(--sun-cycle-width);
+    max-width: 100%;
     font-size: var(--sun-time-font-size);
   }
 
@@ -495,75 +628,124 @@
   }
 
   .detail {
+    position: relative;
+    z-index: var(--detail-layer);
     display: flex;
     align-items: center;
     gap: var(--detail-gap);
+  }
+
+  .detail__label {
+    flex: 1;
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+
+  .detail__value {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .chart {
+    display: flex;
+    align-items: stretch;
+    gap: var(--chart-gap);
+    flex: var(--content-row-grow) var(--content-row-shrink) var(--content-row-width);
+    width: var(--content-row-width);
+    color: var(--text-color);
+  }
+
+  .chart__scale {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-shrink: 0;
+    width: var(--chart-scale-width);
+    padding-bottom: var(--chart-label-row-height);
+  }
+
+  .chart__scale-value {
+    font-size: var(--chart-label-font-size);
+    opacity: 0.8;
+  }
+
+  .chart__plot {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .chart__svg {
+    display: block;
+    width: 100%;
+    height: var(--chart-height);
+    overflow: visible;
+  }
+
+  .chart__area {
+    stroke: none;
+  }
+
+  .chart__line {
+    fill: none;
+    stroke: var(--chart-line-color);
+    stroke-width: var(--chart-line-width);
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .chart__labels {
+    position: relative;
+    width: 100%;
+    height: var(--chart-label-row-height);
+  }
+
+  .chart__label {
+    position: absolute;
+    top: 0;
+    font-size: var(--chart-label-font-size);
+    opacity: 0.7;
+    white-space: nowrap;
   }
 
   .forecast {
     display: flex;
     flex-direction: column;
     gap: var(--forecast-gap);
-    width: 100%;
-    max-width: var(--panel-width);
-    height: var(--panel-height);
-  }
-
-  .forecast__toggle {
-    display: flex;
-    justify-content: center;
-    gap: var(--forecast-gap);
-  }
-
-  .forecast__list {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: var(--forecast-gap);
-    flex: 1;
-    min-height: 0;
-  }
-
-  .forecast__list--scroll {
-    justify-content: flex-start;
-    gap: var(--hourly-row-gap);
-    overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    touch-action: pan-y;
-    cursor: grab;
-  }
-
-  .forecast__list--scroll:active {
-    cursor: grabbing;
-  }
-
-  .forecast__list--scroll::-webkit-scrollbar {
-    display: none;
+    flex: var(--content-row-grow) var(--content-row-shrink) var(--content-row-width);
+    width: var(--content-row-width);
   }
 
   .forecast__row {
     display: grid;
-    grid-template-columns: var(--forecast-day-column) var(--forecast-icon-column) 1fr;
+    grid-template-columns: repeat(var(--forecast-day-count), minmax(var(--minimum-size), var(--grid-flexible-track)));
+    gap: var(--forecast-gap);
+    width: 100%;
+  }
+
+  .forecast__card {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    padding: var(--forecast-row-padding-block) var(--forecast-row-padding-inline);
+    gap: var(--forecast-card-gap);
+    min-width: 0;
+    box-sizing: border-box;
+    padding: var(--forecast-card-padding-block) var(--forecast-card-padding-inline);
+    border: var(--forecast-card-border-width) solid var(--forecast-card-border-color);
     border-radius: var(--forecast-row-radius);
     background-color: var(--row-background);
+    color: var(--text-color);
   }
 
   .forecast__temps {
-    text-align: right;
-  }
-
-  .forecast__row--hourly {
-    grid-template-columns: var(--forecast-hour-column) var(--forecast-icon-column) 1fr;
-  }
-
-  .forecast__row--hourly .forecast__day {
-    white-space: nowrap;
+    display: flex;
+    gap: var(--compact-gap);
+    font-size: var(--forecast-card-font-size);
   }
 
   .forecast__day {
+    font-size: var(--forecast-card-font-size);
     font-weight: 600;
   }
 
@@ -575,19 +757,14 @@
   .weather :global(.lucide) {
     width: var(--weather-icon-size);
     height: var(--weather-icon-size);
-  }
-
-  .forecast__toggle :global(.button) {
-    padding: var(--forecast-row-padding-block) var(--forecast-row-padding-inline);
+    flex-shrink: 0;
   }
 
   .forecast__high {
-    text-align: right;
     font-weight: 600;
   }
 
   .forecast__low {
-    text-align: right;
     opacity: 0.7;
   }
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -17,7 +16,8 @@ const reverseGeocodeZoom = 10
 const weatherHTTPTimeout = 5 * time.Second
 const invalidUVDataMessage = "forecast response does not contain UV data for the current time"
 const currentDayIndex = 0
-const weatherForecastQueryFormat = "%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=7&timezone=auto"
+const hourlyForecastWindow = 24
+const weatherForecastQueryFormat = "%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=8&timezone=auto"
 
 var weatherHTTPClient = &http.Client{Timeout: weatherHTTPTimeout}
 
@@ -132,10 +132,9 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 	}
 	result.UVIndex = forecast.Hourly.UVIndex[currentIndex]
 
-	today := currentHour[:10]
-	endIndex := currentIndex
-	for endIndex < len(forecast.Hourly.Time) && strings.HasPrefix(forecast.Hourly.Time[endIndex], today) {
-		endIndex++
+	endIndex := currentIndex + hourlyForecastWindow
+	if endIndex > len(forecast.Hourly.Time) {
+		endIndex = len(forecast.Hourly.Time)
 	}
 	result.HourlyTime = forecast.Hourly.Time[currentIndex:endIndex]
 	result.HourlyTemperature = forecast.Hourly.Temperature2m[currentIndex:endIndex]
