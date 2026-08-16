@@ -5,58 +5,130 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
+env:
+  APPLICATION_DESCRIPTION: Raspberry Pi dashboard
+  APPLICATION_MAINTAINER: Gennaro Tedesco <g.tedesco@finlink.de>
+  APPLICATION_NAME: pi-beta
+  APPLICATION_TITLE: Pi Beta
+  GO_VERSION: "1.25"
+  LINUX_ARCHITECTURE: arm64
+  LINUX_ASSET: pi-beta-linux-arm64.deb
+  MACOS_ASSET: pi-beta-macos-arm64.dmg
+  NODE_VERSION: "22"
+  WAILS_VERSION: v2.14.0
+
 jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
-          go-version: "1.23"
+          go-version: ${{ env.GO_VERSION }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
       - name: Build
         run: wails build -platform darwin/arm64
 
-      - uses: actions/upload-artifact@v4
+      - name: Package
+        run: |
+          readonly image_root="build/dmg"
+          mkdir -p "$image_root"
+          cp -R "build/bin/${APPLICATION_NAME}.app" "$image_root"
+          ln -s /Applications "${image_root}/Applications"
+          hdiutil create -volname "$APPLICATION_TITLE" -srcfolder "$image_root" -ov -format UDZO "$MACOS_ASSET"
+
+      - uses: actions/upload-artifact@v7
         with:
-          name: pi-beta-macos-arm64
-          path: build/bin/*
+          name: release-macos
+          path: ${{ env.MACOS_ASSET }}
+          retention-days: 1
 
   build-linux-arm64:
     runs-on: ubuntu-24.04-arm
+    container: debian:bookworm
     env:
       WAILS_LINUX_BUILD_TAG: webkit2_41
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.23"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Install system dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          apt-get update
+          apt-get install -y build-essential ca-certificates git libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config tar
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+        run: go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
 
       - name: Build
         run: wails build -platform linux/arm64 -tags "$WAILS_LINUX_BUILD_TAG"
 
-      - uses: actions/upload-artifact@v4
+      - name: Package
+        run: |
+          readonly package_root="build/package"
+          readonly application_path="${package_root}/usr/bin/${APPLICATION_NAME}"
+          readonly desktop_path="${package_root}/usr/share/applications/${APPLICATION_NAME}.desktop"
+          readonly icon_path="${package_root}/usr/share/icons/hicolor/512x512/apps/${APPLICATION_NAME}.png"
+          readonly control_path="${package_root}/DEBIAN/control"
+          install -Dm755 "build/bin/${APPLICATION_NAME}" "$application_path"
+          install -Dm644 images/logo.png "$icon_path"
+          mkdir -p "$(dirname "$desktop_path")" "$(dirname "$control_path")"
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Type=Application' \
+            "Name=${APPLICATION_TITLE}" \
+            "Exec=${APPLICATION_NAME}" \
+            "Icon=${APPLICATION_NAME}" \
+            'Terminal=false' \
+            'Categories=Utility;' > "$desktop_path"
+          printf '%s\n' \
+            "Package: ${APPLICATION_NAME}" \
+            "Version: ${GITHUB_REF_NAME#v}" \
+            "Architecture: ${LINUX_ARCHITECTURE}" \
+            "Maintainer: ${APPLICATION_MAINTAINER}" \
+            'Depends: libgtk-3-0, libwebkit2gtk-4.1-0' \
+            "Description: ${APPLICATION_DESCRIPTION}" > "$control_path"
+          dpkg-deb --root-owner-group --build "$package_root" "$LINUX_ASSET"
+
+      - uses: actions/upload-artifact@v7
         with:
-          name: pi-beta-linux-arm64
-          path: build/bin/*
+          name: release-linux
+          path: ${{ env.LINUX_ASSET }}
+          retention-days: 1
+
+  publish-release:
+    needs:
+      - build-macos
+      - build-linux-arm64
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release/* --generate-notes --title "$GITHUB_REF_NAME" --verify-tag
