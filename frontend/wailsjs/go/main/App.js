@@ -6,6 +6,10 @@ export function ChoosePhotosFolder() {
   return window['go']['main']['App']['ChoosePhotosFolder']();
 }
 
+export function GetMachineStatus() {
+  return window['go']['main']['App']['GetMachineStatus']();
+}
+
 export function GetWeather() {
   return window['go']['main']['App']['GetWeather']();
 }

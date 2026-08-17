@@ -23,6 +23,8 @@
         <string>true</string>
         <key>NSHumanReadableCopyright</key>
         <string>{{.Info.Copyright}}</string>
+        <key>NSLocationWhenInUseUsageDescription</key>
+        <string>Displays the connected Wi-Fi name and signal strength.</string>
         {{if .Info.FileAssociations}}
         <key>CFBundleDocumentTypes</key>
         <array>
