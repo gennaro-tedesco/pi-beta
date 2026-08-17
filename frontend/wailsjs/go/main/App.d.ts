@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function ChoosePhotosFolder():Promise<string>;
 
+export function GetMachineStatus():Promise<main.MachineStatus>;
+
 export function GetWeather():Promise<main.Weather>;
 
 export function GetWeatherAt(arg1:number,arg2:number):Promise<main.Weather>;

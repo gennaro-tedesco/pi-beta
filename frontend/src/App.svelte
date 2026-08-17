@@ -1,18 +1,21 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
   import { fly, scale } from 'svelte/transition'
-  import { CalendarSync, FolderOpen, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
+  import { CalendarSync, FolderOpen, LocateFixed, MapPin, Moon, RotateCw, Wifi } from 'lucide-svelte'
   import { Button, Tile } from './lib/components'
+  import { GetMachineStatus } from '../wailsjs/go/main/App'
+  import type { main } from '../wailsjs/go/models'
   import WeatherView from './lib/views/WeatherView.svelte'
   import CityPicker from './lib/views/CityPicker.svelte'
   import PhotoSlideshow from './lib/views/PhotoSlideshow.svelte'
+  import NetworkView from './lib/views/NetworkView.svelte'
   import type { WeatherScene } from './lib/views/weatherScene'
   import { transitionDuration } from './lib/transition'
   import cameraIllustration from './assets/images/camera-color.svg'
   import filmIllustration from './assets/images/film-frames-color.svg'
   import weatherTileAnimation from '@bybas/weather-icons/production/fill/all/partly-cloudy-day-rain.svg'
 
-  type WidgetId = 'calendar' | 'photos' | 'weather'
+  type WidgetId = 'calendar' | 'network' | 'photos' | 'weather'
   type Coords = { lat: number; lon: number }
   type CalendarDay = {
     day: number
@@ -59,6 +62,10 @@
   const homeLogoSrc = '/images/logo.png'
   const calendarTitle = 'Calendar'
   const calendarWidgetId = 'calendar'
+  const networkWidgetId = 'network'
+  const networkTitle = 'Machine'
+  const networkRefreshLabel = 'Refresh machine status'
+  const networkPollIntervalMs = 5000
   const currentDateAriaValue = 'date'
   const chooseMonthLabel = 'Choose month'
   const todayButtonLabel = 'Go to today'
@@ -130,6 +137,11 @@
   let showMonthPicker = false
   let calendarDateRefreshTimer: ReturnType<typeof setInterval>
   let monthPickerTrigger: HTMLButtonElement
+  let networkStatus: main.MachineStatus | null = null
+  let networkError: string | null = null
+  let networkLoading = true
+  let networkRefreshing = false
+  let networkRefreshTimer: ReturnType<typeof setInterval>
 
   function isSameDay(left: Date, right: Date): boolean {
     return left.getFullYear() === right.getFullYear()
@@ -326,6 +338,20 @@
     weatherViewRef?.refresh()
   }
 
+  async function refreshNetworkStatus(): Promise<void> {
+    if (networkRefreshing) return
+    networkRefreshing = true
+    networkError = null
+    try {
+      networkStatus = await GetMachineStatus()
+    } catch (err) {
+      networkError = String(err)
+    } finally {
+      networkLoading = false
+      networkRefreshing = false
+    }
+  }
+
   async function handleCurrentLocation(): Promise<void> {
     const wasCityPickerOpen = showCityPicker
     selectedCoords = null
@@ -348,12 +374,17 @@
   }
 
   onMount(() => {
+    refreshNetworkStatus()
     calendarDateRefreshTimer = setInterval(() => {
       currentDate = new Date()
     }, calendarDateRefreshIntervalMs)
+    networkRefreshTimer = setInterval(refreshNetworkStatus, networkPollIntervalMs)
   })
 
-  onDestroy(() => clearInterval(calendarDateRefreshTimer))
+  onDestroy(() => {
+    clearInterval(calendarDateRefreshTimer)
+    clearInterval(networkRefreshTimer)
+  })
 
   $: if (activeWidget !== 'weather') weatherScene = null
   $: tomorrow = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + nextDayOffset)
@@ -414,6 +445,12 @@
             <FolderOpen size={weatherActionIconSize} />
           </Button>
         </div>
+      {:else if activeWidget === networkWidgetId}
+        <div class="nav__actions">
+          <Button ghost disabled={networkRefreshing} on:click={refreshNetworkStatus} aria-label={networkRefreshLabel}>
+            <RotateCw size={weatherActionIconSize} />
+          </Button>
+        </div>
       {/if}
     </div>
   {/if}
@@ -470,6 +507,13 @@
             </div>
           </div>
         </Tile>
+        <Tile title={networkTitle} on:toggle={() => maximize(networkWidgetId)}>
+          <div slot="visual" class="tile__network" aria-hidden="true">
+            <div class="tile__network-icon">
+              <Wifi />
+            </div>
+          </div>
+        </Tile>
       </div>
     {:else if activeWidget === 'weather' && showCityPicker}
       <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
@@ -477,6 +521,8 @@
       <WeatherView bind:this={weatherViewRef} coords={selectedCoords} on:scene={handleWeatherScene} />
     {:else if activeWidget === 'photos'}
       <PhotoSlideshow bind:this={photoSlideshowRef} />
+    {:else if activeWidget === networkWidgetId}
+      <NetworkView status={networkStatus} loading={networkLoading} error={networkError} />
     {:else if activeWidget === calendarWidgetId}
       <section
         class="calendar"
@@ -679,7 +725,7 @@
   .tiles {
     --tile-height: 50vh;
     --tile-width: clamp(13rem, 27vw, 24rem);
-    --tile-column-count: 3;
+    --tile-column-count: 4;
     --tiles-width: 100%;
     --tiles-horizontal-overflow: auto;
     --tiles-justification: safe center;
@@ -987,7 +1033,8 @@
     .tiles :global(.tile__ambient),
     .tiles :global(.tile__landscape),
     .tiles :global(.tile__landscape span),
-    .tiles :global(.tile__calendar-page--turning) {
+    .tiles :global(.tile__calendar-page--turning),
+    .tiles :global(.tile__network-icon) {
       animation-play-state: paused;
     }
   }
@@ -1000,6 +1047,64 @@
     object-fit: contain;
     filter: drop-shadow(0 0 var(--weather-shadow-blur) rgba(255, 255, 255, 0.18));
     animation: floatIcon 6s ease-in-out infinite;
+  }
+
+  .tiles :global(.tile__network) {
+    --network-tile-fill: 100%;
+    --network-tile-icon-size: min(38cqmin, 9rem);
+    --network-tile-icon-padding: min(8cqmin, 2rem);
+    --network-tile-radius: 50%;
+    --network-tile-background: rgba(215, 238, 229, 0.72);
+    --network-tile-offline-background: rgba(255, 220, 220, 0.72);
+    --network-tile-color: #3c8d72;
+    --network-tile-offline-color: #b9525f;
+    --network-tile-broadcast-duration: 2.4s;
+    --network-tile-broadcast-start-scale: 0.82;
+    --network-tile-broadcast-end-scale: 1;
+    --network-tile-broadcast-start-opacity: 0.32;
+    --network-tile-broadcast-end-opacity: 1;
+    --network-tile-broadcast-origin: center bottom;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--network-tile-fill);
+    height: var(--network-tile-fill);
+  }
+
+  .tiles :global(.tile__network-icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--network-tile-icon-size);
+    height: var(--network-tile-icon-size);
+    box-sizing: border-box;
+    padding: var(--network-tile-icon-padding);
+    border-radius: var(--network-tile-radius);
+    background: var(--network-tile-background);
+    color: var(--network-tile-color);
+    animation: wifiBroadcast var(--network-tile-broadcast-duration) ease-out infinite;
+    transform-origin: var(--network-tile-broadcast-origin);
+  }
+
+  .tiles :global(.tile__network--offline .tile__network-icon) {
+    background: var(--network-tile-offline-background);
+    color: var(--network-tile-offline-color);
+  }
+
+  .tiles :global(.tile__network-icon .lucide) {
+    width: var(--network-tile-fill);
+    height: var(--network-tile-fill);
+  }
+
+  @keyframes wifiBroadcast {
+    from {
+      opacity: var(--network-tile-broadcast-start-opacity);
+      transform: scale(var(--network-tile-broadcast-start-scale));
+    }
+    to {
+      opacity: var(--network-tile-broadcast-end-opacity);
+      transform: scale(var(--network-tile-broadcast-end-scale));
+    }
   }
 
   .tiles :global(.tile__calendar) {
