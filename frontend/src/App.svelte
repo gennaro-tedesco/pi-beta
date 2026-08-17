@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
   import { fly, scale } from 'svelte/transition'
-  import { CalendarSync, Cpu, FolderOpen, LocateFixed, MapPin, Moon, RotateCw } from 'lucide-svelte'
+  import { CalendarSync, FolderOpen, LocateFixed, MapPin, Moon, RotateCw, Wifi } from 'lucide-svelte'
   import { Button, Tile } from './lib/components'
   import { GetMachineStatus } from '../wailsjs/go/main/App'
   import type { main } from '../wailsjs/go/models'
@@ -65,14 +65,7 @@
   const networkWidgetId = 'network'
   const networkTitle = 'Machine'
   const networkRefreshLabel = 'Refresh machine status'
-  const networkCheckingLabel = 'Reading…'
-  const networkUnavailableLabel = 'Unavailable'
   const networkPollIntervalMs = 5000
-  const networkTileSeparator = ' · '
-  const networkTileCPUlabel = 'CPU'
-  const networkTileProcessLabel = 'processes'
-  const networkTilePercentUnit = '%'
-  const networkTileFractionDigits = 0
   const currentDateAriaValue = 'date'
   const chooseMonthLabel = 'Choose month'
   const todayButtonLabel = 'Go to today'
@@ -295,12 +288,6 @@
     tileSwipeConsumed = false
   }
 
-  function formatMachinePercentage(value: number | undefined): string {
-    return value == null
-      ? networkUnavailableLabel
-      : `${value.toFixed(networkTileFractionDigits)}${networkTilePercentUnit}`
-  }
-
   function toggleMonthPicker(): void {
     showMonthPicker = !showMonthPicker
   }
@@ -406,12 +393,6 @@
     key: calendarCursor.getTime(),
     weeks: getCalendarWeeks(calendarCursor)
   } as CalendarView
-  $: networkTileValue = networkLoading
-    ? networkCheckingLabel
-    : formatMachinePercentage(networkStatus?.memoryUsedPercent)
-  $: networkTileLabel = networkLoading
-    ? networkCheckingLabel
-    : `${networkTileCPUlabel} ${formatMachinePercentage(networkStatus?.cpuPercent)}${networkTileSeparator}${networkStatus?.processCount ?? networkUnavailableLabel} ${networkTileProcessLabel}`
 </script>
 
 <svelte:window on:pointerdown={handleWindowPointerDown} on:keydown={handleWindowKeydown} />
@@ -511,15 +492,6 @@
         <Tile title="Weather" on:toggle={() => maximize('weather')}>
           <img slot="visual" class="tile__weather-scene" src={weatherTileAnimation} alt="" />
         </Tile>
-        <Tile title={networkTitle} on:toggle={() => maximize(networkWidgetId)}>
-          <div slot="visual" class="tile__network" aria-hidden="true">
-            <div class="tile__network-icon">
-              <Cpu />
-            </div>
-            <strong>{networkTileValue}</strong>
-            <span>{networkTileLabel}</span>
-          </div>
-        </Tile>
         <Tile title={calendarTitle} on:toggle={() => maximize(calendarWidgetId)}>
           <div slot="visual" class="tile__calendar" aria-hidden="true">
             <div class="tile__calendar-binding"><span /><span /></div>
@@ -532,6 +504,13 @@
               <span class="tile__calendar-month">{monthFormatter.format(currentDate)}</span>
               <strong class="tile__calendar-day">{currentDate.getDate()}</strong>
               <span class="tile__calendar-weekday">{weekdayFormatter.format(currentDate)}</span>
+            </div>
+          </div>
+        </Tile>
+        <Tile title={networkTitle} on:toggle={() => maximize(networkWidgetId)}>
+          <div slot="visual" class="tile__network" aria-hidden="true">
+            <div class="tile__network-icon">
+              <Wifi />
             </div>
           </div>
         </Tile>
@@ -1072,7 +1051,6 @@
 
   .tiles :global(.tile__network) {
     --network-tile-fill: 100%;
-    --network-tile-gap: min(3cqmin, 0.75rem);
     --network-tile-icon-size: min(38cqmin, 9rem);
     --network-tile-icon-padding: min(8cqmin, 2rem);
     --network-tile-radius: 50%;
@@ -1080,22 +1058,17 @@
     --network-tile-offline-background: rgba(255, 220, 220, 0.72);
     --network-tile-color: #3c8d72;
     --network-tile-offline-color: #b9525f;
-    --network-tile-value-size: min(12cqmin, 2.5rem);
-    --network-tile-label-size: min(5cqmin, 1rem);
-    --network-tile-label-width: 90%;
-    --network-tile-pulse-duration: 2.4s;
-    --network-tile-pulse-scale: 1.08;
-    --network-tile-muted-opacity: 0.72;
-    --network-tile-line-height: 1;
-    --network-tile-rest-scale: 1;
+    --network-tile-broadcast-duration: 2.4s;
+    --network-tile-broadcast-start-scale: 0.82;
+    --network-tile-broadcast-end-scale: 1;
+    --network-tile-broadcast-start-opacity: 0.32;
+    --network-tile-broadcast-end-opacity: 1;
+    --network-tile-broadcast-origin: center bottom;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     width: var(--network-tile-fill);
     height: var(--network-tile-fill);
-    gap: var(--network-tile-gap);
-    text-align: center;
   }
 
   .tiles :global(.tile__network-icon) {
@@ -1109,7 +1082,8 @@
     border-radius: var(--network-tile-radius);
     background: var(--network-tile-background);
     color: var(--network-tile-color);
-    animation: networkPulse var(--network-tile-pulse-duration) ease-in-out infinite;
+    animation: wifiBroadcast var(--network-tile-broadcast-duration) ease-out infinite;
+    transform-origin: var(--network-tile-broadcast-origin);
   }
 
   .tiles :global(.tile__network--offline .tile__network-icon) {
@@ -1122,27 +1096,14 @@
     height: var(--network-tile-fill);
   }
 
-  .tiles :global(.tile__network strong) {
-    font-size: var(--network-tile-value-size);
-    line-height: var(--network-tile-line-height);
-  }
-
-  .tiles :global(.tile__network span) {
-    width: var(--network-tile-label-width);
-    overflow: hidden;
-    font-size: var(--network-tile-label-size);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    opacity: var(--network-tile-muted-opacity);
-  }
-
-  @keyframes networkPulse {
-    0%,
-    100% {
-      transform: scale(var(--network-tile-rest-scale));
+  @keyframes wifiBroadcast {
+    from {
+      opacity: var(--network-tile-broadcast-start-opacity);
+      transform: scale(var(--network-tile-broadcast-start-scale));
     }
-    50% {
-      transform: scale(var(--network-tile-pulse-scale));
+    to {
+      opacity: var(--network-tile-broadcast-end-opacity);
+      transform: scale(var(--network-tile-broadcast-end-scale));
     }
   }
 
