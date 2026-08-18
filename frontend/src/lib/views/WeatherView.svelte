@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, tick } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { scale } from 'svelte/transition'
   import { CircleGauge, Droplets, Leaf, LocateFixed, MapPin, Moon, MoonStar, RotateCw, Sun, SunMedium, Wind } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
@@ -50,6 +50,9 @@
   const chartLabelIntervalHours = 2
   const chartGradientId = 'weather-chart-gradient'
   const windEffects = ['wind-one', 'wind-two', 'wind-three']
+  const initialWeatherViewKey = 0
+  const weatherViewKeyIncrement = 1
+  const reloadTransitionDuration = transitionDuration / 2
 
   interface ChartPoint {
     x: number
@@ -69,9 +72,29 @@
   let cityClockTimer: ReturnType<typeof setInterval>
   let selectedCoords: Coords | null = null
   let showCityPicker = false
+  let weatherViewKey = initialWeatherViewKey
+  let weatherViewTransitionDuration = transitionDuration
 
   export async function refresh(): Promise<void> {
+    if (selectedCoords === null) {
+      await loadCurrentLocationWeather(reloadTransitionDuration)
+      return
+    }
+
     await loadWeather()
+  }
+
+  async function loadCurrentLocationWeather(duration: number): Promise<void> {
+    error = null
+    try {
+      const currentLocationWeather = await GetWeather()
+      selectedCoords = null
+      weather = currentLocationWeather
+      weatherViewTransitionDuration = duration
+      weatherViewKey += weatherViewKeyIncrement
+    } catch (err) {
+      error = String(err)
+    }
   }
 
   async function loadWeather(): Promise<void> {
@@ -174,13 +197,17 @@
   }
 
   async function handleCurrentLocation(): Promise<void> {
-    selectedCoords = null
+    if (selectedCoords === null) {
+      await loadCurrentLocationWeather(reloadTransitionDuration)
+      return
+    }
+
     showCityPicker = false
-    await tick()
-    refresh()
+    await loadCurrentLocationWeather(transitionDuration)
   }
 
   function openCityPicker(): void {
+    weatherViewTransitionDuration = transitionDuration
     showCityPicker = true
   }
 
@@ -255,11 +282,12 @@
   {#if showCityPicker}
     <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
   {:else}
+    {#key weatherViewKey}
     <div
       class="weather"
       style:container-type={weatherContainerType}
-      out:scale={{ duration: transitionDuration }}
-      in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+      out:scale={{ duration: weatherViewTransitionDuration }}
+      in:scale={{ duration: weatherViewTransitionDuration, delay: weatherViewTransitionDuration }}
     >
   {#if error}
     <Message variant="error" message={error} />
@@ -394,6 +422,7 @@
     </div>
   {/if}
     </div>
+    {/key}
   {/if}
 </div>
 
