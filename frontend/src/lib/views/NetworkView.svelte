@@ -1,13 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { Activity, MemoryStick, Percent, RadioTower, Waves, Wifi } from 'lucide-svelte'
+  import { Activity, MemoryStick, Percent, RadioTower, RotateCw, Waves, Wifi } from 'lucide-svelte'
+  import { GetMachineStatus } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
-  import { Message } from '../components'
+  import { Button, Message, WidgetNavigation } from '../components'
   import { transitionDuration } from '../transition'
-
-  export let status: main.MachineStatus | null = null
-  export let loading = true
-  export let error: string | null = null
 
   type MatrixLine = {
     delay: string
@@ -19,6 +17,9 @@
   }
 
   const machineContainerType = 'size'
+  const networkRefreshLabel = 'Refresh machine status'
+  const networkPollIntervalMs = 5000
+  const networkActionIconSize = 18
   const machineAriaLabel = 'Machine status'
   const loadingLabel = 'Reading machine status…'
   const unavailableLabel = 'Unavailable'
@@ -76,6 +77,31 @@
     { id: 'matrix-14', text: '$ ssh admin@10.0.0.4', top: '93%', delay: '-4.1s', duration: '5s', opacity: '0.86' }
   ]
 
+  let status: main.MachineStatus | null = null
+  let loading = true
+  let error: string | null = null
+  let refreshing = false
+
+  async function refreshNetworkStatus(): Promise<void> {
+    if (refreshing) return
+    refreshing = true
+    error = null
+    try {
+      status = await GetMachineStatus()
+    } catch (err) {
+      error = String(err)
+    } finally {
+      loading = false
+      refreshing = false
+    }
+  }
+
+  onMount(() => {
+    refreshNetworkStatus()
+    const refreshTimer = setInterval(refreshNetworkStatus, networkPollIntervalMs)
+    return () => clearInterval(refreshTimer)
+  })
+
   function clampPercentage(value: number | undefined): number {
     return Math.min(percentageMaximum, Math.max(percentageMinimum, value ?? percentageMinimum))
   }
@@ -127,13 +153,21 @@
   $: networkGaugeOffset = percentageMaximum - networkQualityScore
 </script>
 
-<section
-  class="machine"
-  style:container-type={machineContainerType}
-  aria-label={machineAriaLabel}
-  out:scale={{ duration: transitionDuration }}
-  in:scale={{ duration: transitionDuration, delay: transitionDuration }}
->
+<div class="network-widget">
+  <WidgetNavigation on:home>
+    <svelte:fragment slot="actions">
+      <Button ghost disabled={refreshing} on:click={refreshNetworkStatus} aria-label={networkRefreshLabel}>
+        <RotateCw size={networkActionIconSize} />
+      </Button>
+    </svelte:fragment>
+  </WidgetNavigation>
+  <section
+    class="machine"
+    style:container-type={machineContainerType}
+    aria-label={machineAriaLabel}
+    out:scale={{ duration: transitionDuration }}
+    in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+  >
   {#if error}
     <Message variant="error" message={error} />
   {:else if loading || status === null}
@@ -244,9 +278,29 @@
       </div>
     </div>
   {/if}
-</section>
+  </section>
+</div>
 
 <style>
+  .network-widget {
+    --network-widget-edge: 0;
+    --network-widget-fill: 100%;
+    --network-widget-grow: 1;
+    --network-widget-minimum: 0;
+    --network-widget-padding: 1rem;
+    --network-widget-gap: 1rem;
+    position: absolute;
+    inset: var(--network-widget-edge);
+    display: flex;
+    flex-direction: column;
+    width: var(--network-widget-fill);
+    height: var(--network-widget-fill);
+    min-height: var(--network-widget-minimum);
+    box-sizing: border-box;
+    padding: var(--network-widget-padding);
+    gap: var(--network-widget-gap);
+  }
+
   .machine {
     --machine-fill: 100%;
     --machine-zero: 0;
@@ -306,10 +360,12 @@
     --machine-matrix-text-shadow: 0 0 var(--machine-matrix-shadow-blur) currentColor;
     --machine-matrix-horizontal-offset: min(1.5cqw, 1.5cqh);
     display: flex;
+    flex: var(--network-widget-grow);
     align-items: center;
     justify-content: center;
     width: var(--machine-fill);
     height: var(--machine-fill);
+    min-height: var(--machine-zero);
     box-sizing: border-box;
     padding: var(--machine-padding);
     color: var(--machine-primary);
@@ -447,6 +503,7 @@
     flex-direction: column;
     align-items: center;
     width: var(--machine-fill);
+    height: var(--machine-fill);
     min-height: var(--machine-zero);
     gap: var(--machine-small-padding);
   }

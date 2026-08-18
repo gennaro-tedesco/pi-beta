@@ -29,7 +29,7 @@ func main() {
 	photosHandler := http.NewServeMux()
 	photosHandler.Handle(imagesRoutePrefix, http.StripPrefix(imagesRoutePrefix, http.FileServer(http.Dir(defaultPhotosDir))))
 	photosHandler.HandleFunc(photosRoutePrefix, func(w http.ResponseWriter, r *http.Request) {
-		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(photosDir))).ServeHTTP(w, r)
+		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(app.getPhotosDir()))).ServeHTTP(w, r)
 	})
 
 	// Create application with options

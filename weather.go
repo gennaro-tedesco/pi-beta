@@ -8,15 +8,18 @@ import (
 	"time"
 )
 
-const ipLocationURL = "http://ip-api.com/json/"
+const ipLocationURL = "https://ipwho.is/?fields=success,message,city,latitude,longitude"
 const weatherForecastURL = "https://api.open-meteo.com/v1/forecast"
 const airQualityURL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 const reverseGeocodeURL = "https://nominatim.openstreetmap.org/reverse"
 const reverseGeocodeUserAgent = "pi-beta-weather-dashboard"
 const reverseGeocodeZoom = 10
 const weatherHTTPTimeout = 5 * time.Second
-const invalidUVDataMessage = "forecast response does not contain UV data for the current time"
+const invalidDailyDataMessage = "forecast response contains inconsistent daily data"
+const invalidHourlyDataMessage = "forecast response contains inconsistent hourly data"
+const ipLocationFailureMessageFormat = "ip location request failed: %s"
 const currentDayIndex = 0
+const noForecastEntries = 0
 const hourlyForecastWindow = 24
 const weatherForecastQueryFormat = "%s?latitude=%f&longitude=%f&current=temperature_2m,weather_code,is_day,wind_speed_10m,precipitation_probability,surface_pressure&hourly=uv_index,temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&forecast_days=8&timezone=auto"
 const airQualityQueryFormat = "%s?latitude=%f&longitude=%f&current=us_aqi"
@@ -46,9 +49,11 @@ type Weather struct {
 }
 
 type ipLocation struct {
-	City string  `json:"city"`
-	Lat  float64 `json:"lat"`
-	Lon  float64 `json:"lon"`
+	Success bool    `json:"success"`
+	Message string  `json:"message"`
+	City    string  `json:"city"`
+	Lat     float64 `json:"latitude"`
+	Lon     float64 `json:"longitude"`
 }
 
 type nominatimResponse struct {
@@ -116,6 +121,22 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 	if err != nil {
 		return Weather{}, err
 	}
+	dailyCount := len(forecast.Daily.Time)
+	if dailyCount <= currentDayIndex ||
+		len(forecast.Daily.WeatherCode) != dailyCount ||
+		len(forecast.Daily.Temperature2mMax) != dailyCount ||
+		len(forecast.Daily.Temperature2mMin) != dailyCount ||
+		len(forecast.Daily.Sunrise) != dailyCount ||
+		len(forecast.Daily.Sunset) != dailyCount {
+		return Weather{}, errors.New(invalidDailyDataMessage)
+	}
+	hourlyCount := len(forecast.Hourly.Time)
+	if hourlyCount == noForecastEntries ||
+		len(forecast.Hourly.UVIndex) != hourlyCount ||
+		len(forecast.Hourly.Temperature2m) != hourlyCount ||
+		len(forecast.Hourly.WeatherCode) != hourlyCount {
+		return Weather{}, errors.New(invalidHourlyDataMessage)
+	}
 	airQuality, err := fetchAirQuality(lat, lon)
 	if err != nil {
 		return Weather{}, err
@@ -144,8 +165,8 @@ func buildWeather(city string, lat, lon float64) (Weather, error) {
 		currentHour = currentHour[:13] + ":00"
 	}
 	currentIndex := indexOf(forecast.Hourly.Time, currentHour)
-	if currentIndex < 0 || currentIndex >= len(forecast.Hourly.UVIndex) {
-		return Weather{}, errors.New(invalidUVDataMessage)
+	if currentIndex < 0 {
+		return Weather{}, errors.New(invalidHourlyDataMessage)
 	}
 	result.UVIndex = forecast.Hourly.UVIndex[currentIndex]
 
@@ -205,12 +226,15 @@ func fetchIPLocation() (ipLocation, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return ipLocation{}, fmt.Errorf("ip location request failed: %s", resp.Status)
+		return ipLocation{}, fmt.Errorf(ipLocationFailureMessageFormat, resp.Status)
 	}
 
 	var location ipLocation
 	if err := json.NewDecoder(resp.Body).Decode(&location); err != nil {
 		return ipLocation{}, err
+	}
+	if !location.Success {
+		return ipLocation{}, fmt.Errorf(ipLocationFailureMessageFormat, location.Message)
 	}
 
 	return location, nil

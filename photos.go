@@ -13,8 +13,6 @@ const defaultPhotosDir = "images"
 const logoFilename = "logo.png"
 const choosePhotosFolderTitle = "Choose a folder containing photos"
 
-var photosDir = defaultPhotosDir
-
 var photoExtensions = map[string]bool{
 	".jpg":  true,
 	".jpeg": true,
@@ -22,7 +20,7 @@ var photoExtensions = map[string]bool{
 }
 
 func (a *App) ListPhotos() ([]string, error) {
-	entries, err := os.ReadDir(photosDir)
+	entries, err := os.ReadDir(a.getPhotosDir())
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []string{}, nil
@@ -52,6 +50,6 @@ func (a *App) ChoosePhotosFolder() (string, error) {
 		return "", err
 	}
 
-	photosDir = selected
-	return photosDir, nil
+	a.setPhotosDir(selected)
+	return selected, nil
 }

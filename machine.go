@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/host"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/process"
 )
 
 const (
-	machineRootPath          = "/"
 	machineTopProcessLimit   = 5
 	machineNoProcesses       = 0
 	machineFirstCPUReading   = 0
@@ -25,15 +23,9 @@ type MachineStatus struct {
 	Platform          string           `json:"platform"`
 	PlatformVersion   string           `json:"platformVersion"`
 	Architecture      string           `json:"architecture"`
-	UptimeSeconds     uint64           `json:"uptimeSeconds"`
-	CPUCount          int              `json:"cpuCount"`
 	CPUPercent        *float64         `json:"cpuPercent"`
-	MemoryTotalBytes  uint64           `json:"memoryTotalBytes"`
 	MemoryUsedBytes   uint64           `json:"memoryUsedBytes"`
 	MemoryUsedPercent *float64         `json:"memoryUsedPercent"`
-	DiskTotalBytes    uint64           `json:"diskTotalBytes"`
-	DiskUsedBytes     uint64           `json:"diskUsedBytes"`
-	DiskUsedPercent   *float64         `json:"diskUsedPercent"`
 	LargestProcesses  []MachineProcess `json:"largestProcesses"`
 	Network           NetworkStatus    `json:"network"`
 }
@@ -50,15 +42,14 @@ func (a *App) GetMachineStatus() MachineStatus {
 	networkStatus := buildNetworkStatus(readNetworkLink(), probeInternet(networkHTTPClient, networkProbeURL))
 	status := MachineStatus{
 		Architecture: runtime.GOARCH,
-		CPUCount:     runtime.NumCPU(),
 		Network:      a.networkMonitor.record(networkStatus, checkedAt),
 	}
+	totalMemory := uint64(machineNoProcesses)
 
 	if hostInfo, err := host.Info(); err == nil {
 		status.Hostname = hostInfo.Hostname
 		status.Platform = hostInfo.Platform
 		status.PlatformVersion = hostInfo.PlatformVersion
-		status.UptimeSeconds = hostInfo.Uptime
 	}
 
 	if cpuPercent, err := cpu.Percent(machineCPUSampleDuration, false); err == nil && len(cpuPercent) > machineNoProcesses {
@@ -66,18 +57,12 @@ func (a *App) GetMachineStatus() MachineStatus {
 	}
 
 	if memory, err := mem.VirtualMemory(); err == nil {
-		status.MemoryTotalBytes = memory.Total
+		totalMemory = memory.Total
 		status.MemoryUsedBytes = memory.Used
 		status.MemoryUsedPercent = &memory.UsedPercent
 	}
 
-	if storage, err := disk.Usage(machineRootPath); err == nil {
-		status.DiskTotalBytes = storage.Total
-		status.DiskUsedBytes = storage.Used
-		status.DiskUsedPercent = &storage.UsedPercent
-	}
-
-	status.LargestProcesses = readLargestProcesses(status.MemoryTotalBytes)
+	status.LargestProcesses = readLargestProcesses(totalMemory)
 	return status
 }
 
