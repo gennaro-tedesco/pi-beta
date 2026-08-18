@@ -64,9 +64,6 @@ func (monitor *networkMonitor) record(status NetworkStatus, checkedAt time.Time)
 	metrics := calculateNetworkWindowMetrics(monitor.samples)
 
 	status.AverageLatencyMs = metrics.averageLatencyMs
-	status.JitterMs = metrics.jitterMs
-	status.ProbeLossPercent = metrics.probeLossPercent
-	status.SampleCount = metrics.sampleCount
 	status.Stability = classifyNetworkStability(metrics, reachable)
 	status.QualityScore = calculateNetworkQualityScore(metrics, status.SignalPercent, reachable)
 	status.Quality = classifyNetworkQuality(status.QualityScore, metrics.sampleCount, reachable)

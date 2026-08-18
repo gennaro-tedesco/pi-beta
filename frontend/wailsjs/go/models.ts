@@ -26,17 +26,12 @@ export namespace main {
 	    networkName?: string;
 	    signalPercent?: number;
 	    signalDbm?: number;
-	    signalQuality: string;
 	    linkBitrateMbps?: number;
 	    latencyMs?: number;
 	    averageLatencyMs?: number;
-	    jitterMs?: number;
-	    probeLossPercent: number;
 	    qualityScore: number;
 	    quality: string;
 	    stability: string;
-	    sampleCount: number;
-	    checkedAt: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new NetworkStatus(source);
@@ -51,17 +46,12 @@ export namespace main {
 	        this.networkName = source["networkName"];
 	        this.signalPercent = source["signalPercent"];
 	        this.signalDbm = source["signalDbm"];
-	        this.signalQuality = source["signalQuality"];
 	        this.linkBitrateMbps = source["linkBitrateMbps"];
 	        this.latencyMs = source["latencyMs"];
 	        this.averageLatencyMs = source["averageLatencyMs"];
-	        this.jitterMs = source["jitterMs"];
-	        this.probeLossPercent = source["probeLossPercent"];
 	        this.qualityScore = source["qualityScore"];
 	        this.quality = source["quality"];
 	        this.stability = source["stability"];
-	        this.sampleCount = source["sampleCount"];
-	        this.checkedAt = source["checkedAt"];
 	    }
 	}
 	export class MachineStatus {
@@ -78,7 +68,6 @@ export namespace main {
 	    diskTotalBytes: number;
 	    diskUsedBytes: number;
 	    diskUsedPercent?: number;
-	    processCount: number;
 	    largestProcesses: MachineProcess[];
 	    network: NetworkStatus;
 	
@@ -101,7 +90,6 @@ export namespace main {
 	        this.diskTotalBytes = source["diskTotalBytes"];
 	        this.diskUsedBytes = source["diskUsedBytes"];
 	        this.diskUsedPercent = source["diskUsedPercent"];
-	        this.processCount = source["processCount"];
 	        this.largestProcesses = this.convertValues(source["largestProcesses"], MachineProcess);
 	        this.network = this.convertValues(source["network"], NetworkStatus);
 	    }

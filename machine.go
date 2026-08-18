@@ -34,7 +34,6 @@ type MachineStatus struct {
 	DiskTotalBytes    uint64           `json:"diskTotalBytes"`
 	DiskUsedBytes     uint64           `json:"diskUsedBytes"`
 	DiskUsedPercent   *float64         `json:"diskUsedPercent"`
-	ProcessCount      int              `json:"processCount"`
 	LargestProcesses  []MachineProcess `json:"largestProcesses"`
 	Network           NetworkStatus    `json:"network"`
 }
@@ -48,7 +47,7 @@ type MachineProcess struct {
 
 func (a *App) GetMachineStatus() MachineStatus {
 	checkedAt := time.Now()
-	networkStatus := buildNetworkStatus(readNetworkLink(), probeInternet(networkHTTPClient, networkProbeURL), checkedAt)
+	networkStatus := buildNetworkStatus(readNetworkLink(), probeInternet(networkHTTPClient, networkProbeURL))
 	status := MachineStatus{
 		Architecture: runtime.GOARCH,
 		CPUCount:     runtime.NumCPU(),
@@ -78,14 +77,14 @@ func (a *App) GetMachineStatus() MachineStatus {
 		status.DiskUsedPercent = &storage.UsedPercent
 	}
 
-	status.LargestProcesses, status.ProcessCount = readLargestProcesses(status.MemoryTotalBytes)
+	status.LargestProcesses = readLargestProcesses(status.MemoryTotalBytes)
 	return status
 }
 
-func readLargestProcesses(totalMemory uint64) ([]MachineProcess, int) {
+func readLargestProcesses(totalMemory uint64) []MachineProcess {
 	processes, err := process.Processes()
 	if err != nil {
-		return []MachineProcess{}, machineNoProcesses
+		return []MachineProcess{}
 	}
 
 	largestProcesses := make([]MachineProcess, machineNoProcesses, len(processes))
@@ -114,5 +113,5 @@ func readLargestProcesses(totalMemory uint64) ([]MachineProcess, int) {
 	if len(largestProcesses) > machineTopProcessLimit {
 		largestProcesses = largestProcesses[:machineTopProcessLimit]
 	}
-	return largestProcesses, len(processes)
+	return largestProcesses
 }

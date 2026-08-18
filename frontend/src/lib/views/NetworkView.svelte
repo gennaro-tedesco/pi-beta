@@ -1,6 +1,6 @@
 <script lang="ts">
   import { scale } from 'svelte/transition'
-  import { Activity, MemoryStick, Percent, RadioTower, Wifi } from 'lucide-svelte'
+  import { Activity, MemoryStick, Percent, RadioTower, Waves, Wifi } from 'lucide-svelte'
   import type { main } from '../../../wailsjs/go/models'
   import { Message } from '../components'
   import { transitionDuration } from '../transition'
@@ -9,13 +9,13 @@
   export let loading = true
   export let error: string | null = null
 
-  type MatrixColumn = {
+  type MatrixLine = {
     delay: string
     duration: string
-    glyphs: string
     id: string
-    left: string
     opacity: string
+    text: string
+    top: string
   }
 
   const machineContainerType = 'size'
@@ -25,6 +25,7 @@
   const unknownMachineLabel = 'This computer'
   const cpuUtilisationLabel = 'CPU utilisation'
   const signalLabel = 'Signal'
+  const stabilityLabel = 'Stability'
   const latencyLabel = 'Latency'
   const linkSpeedLabel = 'Link speed'
   const connectedLabel = 'Connected'
@@ -58,21 +59,21 @@
   const gaugePathLength = percentageMaximum
   const labelFirstCharacterIndex = 0
   const labelRemainderIndex = 1
-  const matrixColumns: MatrixColumn[] = [
-    { id: 'matrix-01', glyphs: '7AM01ZX9K2QF6', left: '2%', delay: '-1.8s', duration: '4.2s', opacity: '0.72' },
-    { id: 'matrix-02', glyphs: 'P3R8V0N4C1YT5', left: '9%', delay: '-3.1s', duration: '3.7s', opacity: '0.9' },
-    { id: 'matrix-03', glyphs: '0Q5L2W9B7D1X8', left: '16%', delay: '-0.6s', duration: '4.8s', opacity: '0.64' },
-    { id: 'matrix-04', glyphs: 'M8Z1A6K0P4R3V', left: '23%', delay: '-2.5s', duration: '3.9s', opacity: '0.82' },
-    { id: 'matrix-05', glyphs: '4T0C9Y2N7F5Q1', left: '30%', delay: '-4.2s', duration: '5.1s', opacity: '0.58' },
-    { id: 'matrix-06', glyphs: 'X1D6W3L8B0M9A', left: '37%', delay: '-1.3s', duration: '4.4s', opacity: '0.88' },
-    { id: 'matrix-07', glyphs: 'K9P2R7V5Z1C4T', left: '44%', delay: '-3.8s', duration: '4.9s', opacity: '0.7' },
-    { id: 'matrix-08', glyphs: 'N0Y8F3Q6X2D7W', left: '51%', delay: '-0.9s', duration: '3.6s', opacity: '0.94' },
-    { id: 'matrix-09', glyphs: 'L5B1M7A4K9P0R', left: '58%', delay: '-2.9s', duration: '4.6s', opacity: '0.62' },
-    { id: 'matrix-10', glyphs: 'V2Z6C0T8N3Y5F', left: '65%', delay: '-4.5s', duration: '5.2s', opacity: '0.84' },
-    { id: 'matrix-11', glyphs: 'Q7X1D9W4L0B6M', left: '72%', delay: '-1.6s', duration: '4.1s', opacity: '0.76' },
-    { id: 'matrix-12', glyphs: 'A3K8P5R2V7Z0C', left: '79%', delay: '-3.4s', duration: '4.7s', opacity: '0.92' },
-    { id: 'matrix-13', glyphs: 'T6N1Y9F4Q0X8D', left: '86%', delay: '-2.1s', duration: '3.8s', opacity: '0.66' },
-    { id: 'matrix-14', glyphs: 'W0L7B2M5A9K3P', left: '93%', delay: '-4.1s', duration: '5s', opacity: '0.86' }
+  const matrixLines: MatrixLine[] = [
+    { id: 'matrix-01', text: '$ ping -c 4 1.1.1.1', top: '2%', delay: '-1.8s', duration: '4.2s', opacity: '0.72' },
+    { id: 'matrix-02', text: '$ curl -sI https://api', top: '9%', delay: '-3.1s', duration: '3.7s', opacity: '0.9' },
+    { id: 'matrix-03', text: '$ top -o cpu', top: '16%', delay: '-0.6s', duration: '4.8s', opacity: '0.64' },
+    { id: 'matrix-04', text: '$ netstat -an | grep LISTEN', top: '23%', delay: '-2.5s', duration: '3.9s', opacity: '0.82' },
+    { id: 'matrix-05', text: '$ whoami', top: '30%', delay: '-4.2s', duration: '5.1s', opacity: '0.58' },
+    { id: 'matrix-06', text: '$ uptime', top: '37%', delay: '-1.3s', duration: '4.4s', opacity: '0.88' },
+    { id: 'matrix-07', text: '$ ifconfig wlan0', top: '44%', delay: '-3.8s', duration: '4.9s', opacity: '0.7' },
+    { id: 'matrix-08', text: '$ ps aux | grep node', top: '51%', delay: '-0.9s', duration: '3.6s', opacity: '0.94' },
+    { id: 'matrix-09', text: '$ df -h /', top: '58%', delay: '-2.9s', duration: '4.6s', opacity: '0.62' },
+    { id: 'matrix-10', text: '$ free -m', top: '65%', delay: '-4.5s', duration: '5.2s', opacity: '0.84' },
+    { id: 'matrix-11', text: '$ traceroute 8.8.8.8', top: '72%', delay: '-1.6s', duration: '4.1s', opacity: '0.76' },
+    { id: 'matrix-12', text: '$ systemctl status network', top: '79%', delay: '-3.4s', duration: '4.7s', opacity: '0.92' },
+    { id: 'matrix-13', text: '$ journalctl -f', top: '86%', delay: '-2.1s', duration: '3.8s', opacity: '0.66' },
+    { id: 'matrix-14', text: '$ ssh admin@10.0.0.4', top: '93%', delay: '-4.1s', duration: '5s', opacity: '0.86' }
   ]
 
   function clampPercentage(value: number | undefined): number {
@@ -183,19 +184,26 @@
                 <span>{signalLabel}</span>
                 <strong>{status.network.signalDbm == null ? unavailableLabel : formatMetric(status.network.signalDbm, decibelsUnit)}</strong>
               </div>
+              <div>
+                <Waves aria-hidden="true" />
+                <span>{stabilityLabel}</span>
+                <strong>{formatLabel(status.network.stability)}</strong>
+              </div>
             </div>
           </div>
         </article>
 
         <span class="machine__matrix" aria-hidden="true">
-          {#each matrixColumns as column (column.id)}
+          {#each matrixLines as line (line.id)}
             <span
-              class="machine__matrix-column"
-              style:left={column.left}
-              style:opacity={column.opacity}
-              style:animation-delay={column.delay}
-              style:animation-duration={column.duration}
-            >{column.glyphs}</span>
+              class="machine__matrix-line"
+              style:top={line.top}
+              style:opacity={line.opacity}
+              style:animation-delay={line.delay}
+              style:animation-duration={line.duration}
+              style:animation-timing-function={`steps(${line.text.length}, end)`}
+              style:--machine-matrix-line-width={`${line.text.length}ch`}
+            >{line.text}</span>
           {/each}
         </span>
 
@@ -256,7 +264,7 @@
     --machine-track: rgba(74, 63, 102, 0.12);
     --machine-detail-columns: minmax(0, 3fr) minmax(0, 2fr);
     --machine-detail-rows: minmax(0, 1fr);
-    --machine-detail-layout-rows: auto minmax(0, 1fr);
+    --machine-detail-layout-rows: auto auto;
     --machine-detail-areas: ". matrix" "network processes";
     --machine-double-span: 2;
     --machine-title-size: min(6cqh, 5cqw);
@@ -283,7 +291,7 @@
     --machine-gauge-transition-duration: 700ms;
     --machine-gauge-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
     --machine-line-height: 1.1;
-    --machine-matrix-width: min(24cqw, 20cqh);
+    --machine-matrix-width: min(36cqw, 30cqh);
     --machine-matrix-aspect-ratio: 16 / 9;
     --machine-matrix-background: radial-gradient(ellipse at center, rgba(184, 224, 232, 0.64), transparent 68%), radial-gradient(ellipse at center, rgba(224, 204, 240, 0.58), transparent 82%);
     --machine-matrix-background-blend-mode: soft-light;
@@ -291,15 +299,11 @@
     --machine-matrix-blend-mode: multiply;
     --machine-matrix-color: #315f73;
     --machine-matrix-font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-    --machine-matrix-font-size: min(1.1cqh, 0.62cqw);
+    --machine-matrix-font-size: min(1.65cqh, 0.93cqw);
     --machine-matrix-font-weight: 700;
     --machine-matrix-line-height: 1;
-    --machine-matrix-letter-spacing: min(0.14cqh, 0.08cqw);
-    --machine-matrix-shadow-blur: min(0.8cqh, 0.45cqw);
+    --machine-matrix-shadow-blur: min(1.2cqh, 0.675cqw);
     --machine-matrix-text-shadow: 0 0 var(--machine-matrix-shadow-blur) currentColor;
-    --machine-matrix-mask: linear-gradient(to bottom, transparent, #000000 14%, #000000 82%, transparent);
-    --machine-matrix-start-position: -110%;
-    --machine-matrix-end-position: 90%;
     --machine-matrix-horizontal-offset: min(1.5cqw, 1.5cqh);
     display: flex;
     align-items: center;
@@ -364,24 +368,20 @@
     mask-image: var(--machine-matrix-edge-mask);
   }
 
-  .machine__matrix-column {
+  .machine__matrix-line {
     position: absolute;
-    top: var(--machine-zero);
+    left: var(--machine-zero);
+    width: var(--machine-zero);
+    overflow: hidden;
     font-family: var(--machine-matrix-font-family);
     font-size: var(--machine-matrix-font-size);
     font-weight: var(--machine-matrix-font-weight);
     line-height: var(--machine-matrix-line-height);
-    letter-spacing: var(--machine-matrix-letter-spacing);
     text-shadow: var(--machine-matrix-text-shadow);
-    text-orientation: upright;
     white-space: nowrap;
-    writing-mode: vertical-rl;
-    -webkit-mask-image: var(--machine-matrix-mask);
-    mask-image: var(--machine-matrix-mask);
-    animation-name: matrixRain;
-    animation-timing-function: linear;
+    animation-name: matrixType;
     animation-iteration-count: infinite;
-    will-change: transform;
+    will-change: width;
   }
 
   .machine__details {
@@ -390,7 +390,6 @@
   }
 
   .machine__details {
-    flex: 1 1 auto;
     grid-template-areas: var(--machine-detail-areas);
     grid-template-columns: var(--machine-detail-columns);
     grid-template-rows: var(--machine-detail-layout-rows);
@@ -599,18 +598,18 @@
 
   @media (prefers-reduced-motion: reduce) {
     .network-gauge__value { transition: none; }
-    .machine__matrix-column {
+    .machine__matrix-line {
       animation: none;
-      transform: translateY(var(--machine-zero));
+      width: var(--machine-matrix-line-width);
     }
   }
 
-  @keyframes matrixRain {
+  @keyframes matrixType {
     from {
-      transform: translateY(var(--machine-matrix-start-position));
+      width: var(--machine-zero);
     }
     to {
-      transform: translateY(var(--machine-matrix-end-position));
+      width: var(--machine-matrix-line-width);
     }
   }
 </style>

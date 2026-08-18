@@ -21,11 +21,6 @@ const (
 	networkInternetTransportError  = "transport-error"
 	networkInternetCaptivePortal   = "captive-portal"
 	networkInternetUnknown         = "unknown"
-	networkSignalUnknown           = "unknown"
-	networkSignalPoor              = "poor"
-	networkSignalFair              = "fair"
-	networkSignalGood              = "good"
-	networkSignalExcellent         = "excellent"
 	networkQualityMeasuring        = "measuring"
 	networkQualityExcellent        = "excellent"
 	networkQualityGood             = "good"
@@ -38,9 +33,6 @@ const (
 	networkStabilityUnstable       = "unstable"
 	networkStabilityOffline        = "offline"
 	networkSignalMinimum           = 0
-	networkSignalPoorLimit         = 25
-	networkSignalFairLimit         = 50
-	networkSignalGoodLimit         = 75
 	networkSignalMaximum           = 100
 	networkRSSIMinimum             = -90
 	networkRSSIMaximum             = -30
@@ -59,17 +51,12 @@ type NetworkStatus struct {
 	NetworkName       *string  `json:"networkName"`
 	SignalPercent     *int     `json:"signalPercent"`
 	SignalDbm         *int     `json:"signalDbm"`
-	SignalQuality     string   `json:"signalQuality"`
 	LinkBitrateMbps   *float64 `json:"linkBitrateMbps"`
 	LatencyMs         *int64   `json:"latencyMs"`
 	AverageLatencyMs  *float64 `json:"averageLatencyMs"`
-	JitterMs          *float64 `json:"jitterMs"`
-	ProbeLossPercent  float64  `json:"probeLossPercent"`
 	QualityScore      int      `json:"qualityScore"`
 	Quality           string   `json:"quality"`
 	Stability         string   `json:"stability"`
-	SampleCount       int      `json:"sampleCount"`
-	CheckedAt         string   `json:"checkedAt"`
 }
 
 type networkLink struct {
@@ -87,7 +74,7 @@ type networkProbe struct {
 	latencyMs *int64
 }
 
-func buildNetworkStatus(link networkLink, probe networkProbe, checkedAt time.Time) NetworkStatus {
+func buildNetworkStatus(link networkLink, probe networkProbe) NetworkStatus {
 	var reachable *bool
 	if probe.status != networkInternetUnknown {
 		reachable = &probe.reachable
@@ -111,12 +98,10 @@ func buildNetworkStatus(link networkLink, probe networkProbe, checkedAt time.Tim
 		NetworkName:       link.networkName,
 		SignalPercent:     link.signalPercent,
 		SignalDbm:         link.signalDbm,
-		SignalQuality:     classifySignalQuality(link.signalPercent),
 		LinkBitrateMbps:   link.linkBitrateMbps,
 		LatencyMs:         probe.latencyMs,
 		Quality:           networkQualityMeasuring,
 		Stability:         networkStabilityMeasuring,
-		CheckedAt:         checkedAt.UTC().Format(time.RFC3339),
 	}
 }
 
@@ -158,20 +143,4 @@ func normalizeRSSI(rssi int) int {
 		return networkSignalMaximum
 	}
 	return (rssi - networkRSSIMinimum) * networkSignalMaximum / (networkRSSIMaximum - networkRSSIMinimum)
-}
-
-func classifySignalQuality(signalPercent *int) string {
-	if signalPercent == nil || *signalPercent < networkSignalMinimum || *signalPercent > networkSignalMaximum {
-		return networkSignalUnknown
-	}
-	if *signalPercent < networkSignalPoorLimit {
-		return networkSignalPoor
-	}
-	if *signalPercent < networkSignalFairLimit {
-		return networkSignalFair
-	}
-	if *signalPercent < networkSignalGoodLimit {
-		return networkSignalGood
-	}
-	return networkSignalExcellent
 }
