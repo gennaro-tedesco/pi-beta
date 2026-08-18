@@ -19,15 +19,11 @@ export namespace main {
 	    }
 	}
 	export class NetworkStatus {
-	    availability: string;
 	    connectionType: string;
-	    internetStatus: string;
 	    internetReachable?: boolean;
 	    networkName?: string;
-	    signalPercent?: number;
 	    signalDbm?: number;
 	    linkBitrateMbps?: number;
-	    latencyMs?: number;
 	    averageLatencyMs?: number;
 	    qualityScore: number;
 	    quality: string;
@@ -39,15 +35,11 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.availability = source["availability"];
 	        this.connectionType = source["connectionType"];
-	        this.internetStatus = source["internetStatus"];
 	        this.internetReachable = source["internetReachable"];
 	        this.networkName = source["networkName"];
-	        this.signalPercent = source["signalPercent"];
 	        this.signalDbm = source["signalDbm"];
 	        this.linkBitrateMbps = source["linkBitrateMbps"];
-	        this.latencyMs = source["latencyMs"];
 	        this.averageLatencyMs = source["averageLatencyMs"];
 	        this.qualityScore = source["qualityScore"];
 	        this.quality = source["quality"];
@@ -59,15 +51,9 @@ export namespace main {
 	    platform: string;
 	    platformVersion: string;
 	    architecture: string;
-	    uptimeSeconds: number;
-	    cpuCount: number;
 	    cpuPercent?: number;
-	    memoryTotalBytes: number;
 	    memoryUsedBytes: number;
 	    memoryUsedPercent?: number;
-	    diskTotalBytes: number;
-	    diskUsedBytes: number;
-	    diskUsedPercent?: number;
 	    largestProcesses: MachineProcess[];
 	    network: NetworkStatus;
 	
@@ -81,15 +67,9 @@ export namespace main {
 	        this.platform = source["platform"];
 	        this.platformVersion = source["platformVersion"];
 	        this.architecture = source["architecture"];
-	        this.uptimeSeconds = source["uptimeSeconds"];
-	        this.cpuCount = source["cpuCount"];
 	        this.cpuPercent = source["cpuPercent"];
-	        this.memoryTotalBytes = source["memoryTotalBytes"];
 	        this.memoryUsedBytes = source["memoryUsedBytes"];
 	        this.memoryUsedPercent = source["memoryUsedPercent"];
-	        this.diskTotalBytes = source["diskTotalBytes"];
-	        this.diskUsedBytes = source["diskUsedBytes"];
-	        this.diskUsedPercent = source["diskUsedPercent"];
 	        this.largestProcesses = this.convertValues(source["largestProcesses"], MachineProcess);
 	        this.network = this.convertValues(source["network"], NetworkStatus);
 	    }

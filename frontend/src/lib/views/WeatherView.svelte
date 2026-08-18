@@ -1,17 +1,32 @@
 <script lang="ts">
-  import { createEventDispatcher, onDestroy, onMount } from 'svelte'
+  import { onDestroy, onMount, tick } from 'svelte'
   import { scale } from 'svelte/transition'
-  import { CircleGauge, Droplets, Leaf, MoonStar, Sun, SunMedium, Wind } from 'lucide-svelte'
+  import { CircleGauge, Droplets, Leaf, LocateFixed, MapPin, Moon, MoonStar, RotateCw, Sun, SunMedium, Wind } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
-  import { Message } from '../components'
+  import { Button, Message, WidgetNavigation } from '../components'
+  import CityPicker from './CityPicker.svelte'
   import { getWeatherIcon } from './weatherIcon'
-  import { getWeatherScene, type WeatherScene } from './weatherScene'
+  import { getWeatherScene } from './weatherScene'
   import { transitionDuration } from '../transition'
 
-  export let coords: { lat: number; lon: number } | null = null
+  type Coords = { lat: number; lon: number }
 
-  const dispatch = createEventDispatcher<{ scene: WeatherScene | null }>()
+  const stars = [
+    { top: 10, left: 15, delay: 0 },
+    { top: 18, left: 32, delay: 0.6 },
+    { top: 8, left: 52, delay: 1.2 },
+    { top: 22, left: 68, delay: 0.3 },
+    { top: 14, left: 85, delay: 1.8 },
+    { top: 30, left: 8, delay: 2.1 },
+    { top: 34, left: 45, delay: 0.9 },
+    { top: 28, left: 92, delay: 1.5 }
+  ]
+  const weatherActionIconSize = 18
+  const weatherMoonIconSize = 48
+  const refreshWeatherLabel = 'Refresh weather'
+  const currentLocationLabel = 'Use current IP location'
+  const changeCityLabel = 'Change city'
   const cityClockUpdateIntervalMs = 15000
   const millisecondsPerSecond = 1000
   const minimumSunProgress = 0
@@ -52,6 +67,8 @@
   let loading = true
   let cityClockNow = Date.now()
   let cityClockTimer: ReturnType<typeof setInterval>
+  let selectedCoords: Coords | null = null
+  let showCityPicker = false
 
   export async function refresh(): Promise<void> {
     await loadWeather()
@@ -61,7 +78,7 @@
     loading = true
     error = null
     try {
-      weather = coords ? await GetWeatherAt(coords.lat, coords.lon) : await GetWeather()
+      weather = selectedCoords ? await GetWeatherAt(selectedCoords.lat, selectedCoords.lon) : await GetWeather()
     } catch (err) {
       error = String(err)
     } finally {
@@ -156,6 +173,27 @@
     }
   }
 
+  async function handleCurrentLocation(): Promise<void> {
+    selectedCoords = null
+    showCityPicker = false
+    await tick()
+    refresh()
+  }
+
+  function openCityPicker(): void {
+    showCityPicker = true
+  }
+
+  function closeCityPicker(): void {
+    showCityPicker = false
+  }
+
+  function handleCitySelect(event: CustomEvent<Coords>): void {
+    selectedCoords = event.detail
+    showCityPicker = false
+    loadWeather()
+  }
+
   onMount(() => {
     loadWeather()
     cityClockTimer = setInterval(() => {
@@ -183,15 +221,46 @@
   $: chartLabels = weather ? buildChartLabels(weather.hourlyTime, chartPoints) : []
   $: chartMinTemperature = weather && weather.hourlyTemperature.length ? Math.min(...weather.hourlyTemperature) : null
   $: chartMaxTemperature = weather && weather.hourlyTemperature.length ? Math.max(...weather.hourlyTemperature) : null
-  $: dispatch('scene', scene)
 </script>
 
-<div
-  class="weather"
-  style:container-type={weatherContainerType}
-  out:scale={{ duration: transitionDuration }}
-  in:scale={{ duration: transitionDuration, delay: transitionDuration }}
->
+<div class="weather-widget" class:weather-widget--night={scene?.night} style={scene ? `background-image: ${scene.gradient}` : ''}>
+  {#if scene && !showCityPicker}
+    <div class="sky" aria-hidden="true">
+      {#if scene.night}
+        <Moon class="sky__moon" size={weatherMoonIconSize} />
+        {#each stars as star}
+          <span class="sky__star" style="top: {star.top}%; left: {star.left}%; animation-delay: {star.delay}s;" />
+        {/each}
+      {/if}
+      {#if scene.rainAnimation}
+        <img class="sky__weather sky__weather--rain" src={scene.rainAnimation} alt="" />
+      {/if}
+    </div>
+  {/if}
+
+  <WidgetNavigation on:home>
+    <svelte:fragment slot="actions">
+      <Button ghost on:click={refresh} aria-label={refreshWeatherLabel}>
+        <RotateCw size={weatherActionIconSize} />
+      </Button>
+      <Button ghost on:click={handleCurrentLocation} aria-label={currentLocationLabel}>
+        <LocateFixed size={weatherActionIconSize} />
+      </Button>
+      <Button ghost on:click={openCityPicker} aria-label={changeCityLabel}>
+        <MapPin size={weatherActionIconSize} />
+      </Button>
+    </svelte:fragment>
+  </WidgetNavigation>
+
+  {#if showCityPicker}
+    <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
+  {:else}
+    <div
+      class="weather"
+      style:container-type={weatherContainerType}
+      out:scale={{ duration: transitionDuration }}
+      in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+    >
   {#if error}
     <Message variant="error" message={error} />
   {:else if loading || weather === null || scene === null || iconUrl === null}
@@ -324,9 +393,93 @@
       </div>
     </div>
   {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
+  .weather-widget {
+    --weather-widget-edge: 0;
+    --weather-widget-fill: 100%;
+    --weather-widget-minimum: 0;
+    --weather-widget-padding: 1rem;
+    --weather-widget-gap: 1rem;
+    --weather-widget-night-brightness: 0.82;
+    position: absolute;
+    inset: var(--weather-widget-edge);
+    display: flex;
+    flex-direction: column;
+    width: var(--weather-widget-fill);
+    height: var(--weather-widget-fill);
+    min-height: var(--weather-widget-minimum);
+    box-sizing: border-box;
+    padding: var(--weather-widget-padding);
+    gap: var(--weather-widget-gap);
+  }
+
+  .weather-widget--night {
+    filter: brightness(var(--weather-widget-night-brightness));
+  }
+
+  .sky {
+    --rain-animation-size: clamp(8rem, 15vw, 13rem);
+    --weather-animation-opacity: 0.58;
+    --moon-block-position: clamp(3.5rem, 8vh, 6rem);
+    --moon-inline-position: clamp(2rem, 8vw, 8rem);
+    --rain-inline-position: 10%;
+    --rain-block-position: 6%;
+    --moon-color: #f4f1de;
+    --star-size: 3px;
+    --star-radius: 50%;
+    --star-color: #ffffff;
+    --star-animation-duration: 3s;
+    --star-dimmed-opacity: 0.2;
+    --star-full-opacity: 1;
+    position: absolute;
+    inset: var(--weather-widget-edge);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .sky__weather {
+    position: absolute;
+    opacity: var(--weather-animation-opacity);
+    object-fit: contain;
+  }
+
+  .sky__weather--rain {
+    right: var(--rain-inline-position);
+    bottom: var(--rain-block-position);
+    width: var(--rain-animation-size);
+    height: var(--rain-animation-size);
+  }
+
+  .sky :global(.sky__moon) {
+    position: absolute;
+    top: var(--moon-block-position);
+    left: var(--moon-inline-position);
+    color: var(--moon-color);
+  }
+
+  .sky__star {
+    position: absolute;
+    width: var(--star-size);
+    height: var(--star-size);
+    border-radius: var(--star-radius);
+    background-color: var(--star-color);
+    animation: twinkle var(--star-animation-duration) ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%,
+    100% {
+      opacity: var(--star-dimmed-opacity);
+    }
+    50% {
+      opacity: var(--star-full-opacity);
+    }
+  }
+
   .weather {
     --content-edge-margin: min(1rem, 2cqw);
     --content-width: calc(100cqw - (2 * var(--content-edge-margin)));
@@ -339,7 +492,7 @@
     --minimum-size: 0;
     --grid-flexible-track: 1fr;
     --forecast-day-count: 7;
-    --weather-overflow: hidden auto;
+    --weather-overflow: hidden;
     --chart-height: min(3rem, 7cqh);
     --chart-gap: min(0.75rem, 1.5cqw);
     --chart-scale-width: min(3rem, 4cqw);
@@ -414,12 +567,13 @@
     --forecast-card-font-size: clamp(0.65rem, 1.8cqh, 0.85rem);
     --float-distance: min(6px, 1.5cqmin);
     display: flex;
+    flex: 1;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--panel-gap);
     width: 100%;
-    height: 100%;
+    height: var(--weather-widget-fill);
     min-height: var(--minimum-size);
     overflow: var(--weather-overflow);
     font-size: var(--weather-font-size);

@@ -61,11 +61,11 @@ func readNetworkLink() networkLink {
 		}
 	}
 
-	return networkLink{available: true, connectionType: connectionType}
+	return networkLink{connectionType: connectionType}
 }
 
 func readNetworkManagerWiFiLink(connection *dbus.Conn, device dbus.BusObject) networkLink {
-	link := networkLink{available: true, connectionType: networkConnectionWiFi}
+	link := networkLink{connectionType: networkConnectionWiFi}
 	activeAccessPoint, ok := networkManagerObjectPathProperty(device, networkManagerActiveAccessPoint)
 	if !ok || activeAccessPoint == networkManagerNoObjectPath {
 		return link

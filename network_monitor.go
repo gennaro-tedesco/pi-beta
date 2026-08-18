@@ -58,14 +58,14 @@ func (monitor *networkMonitor) record(status NetworkStatus, checkedAt time.Time)
 	monitor.samples = append(monitor.samples, networkSample{
 		checkedAt: checkedAt,
 		reachable: reachable,
-		latencyMs: status.LatencyMs,
+		latencyMs: status.latencyMs,
 	})
 	monitor.prune(checkedAt.Add(-networkSampleWindow))
 	metrics := calculateNetworkWindowMetrics(monitor.samples)
 
 	status.AverageLatencyMs = metrics.averageLatencyMs
 	status.Stability = classifyNetworkStability(metrics, reachable)
-	status.QualityScore = calculateNetworkQualityScore(metrics, status.SignalPercent, reachable)
+	status.QualityScore = calculateNetworkQualityScore(metrics, status.signalPercent, reachable)
 	status.Quality = classifyNetworkQuality(status.QualityScore, metrics.sampleCount, reachable)
 	return status
 }

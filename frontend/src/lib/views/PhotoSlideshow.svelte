@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from 'svelte'
   import { fade, scale } from 'svelte/transition'
   import { FolderOpen, Rabbit, Turtle } from 'lucide-svelte'
-  import { Button } from '../components'
+  import { Button, Message, WidgetNavigation } from '../components'
   import { transitionDuration } from '../transition'
   import { ChoosePhotosFolder, ListPhotos } from '../../../wailsjs/go/main/App'
 
@@ -12,6 +12,7 @@
   const speedIconSize = 12
   const pickerIconSize = 18
   const chooseFolderLabel = 'Choose photos folder'
+  const changePhotosFolderLabel = 'Change photos folder'
   const photosRoutePrefix = '/photos/'
 
   let photos: string[] = []
@@ -19,6 +20,7 @@
   let activeIndex = 0
   let timer: ReturnType<typeof setInterval>
   let dragStartX: number | null = null
+  let error: string | null = null
 
   function restartTimer(): void {
     clearInterval(timer)
@@ -52,20 +54,30 @@
   }
 
   async function loadPhotos(): Promise<void> {
-    const names = await ListPhotos()
-    photos = names.map((name) => `${photosRoutePrefix}${name}`)
-    activeIndex = 0
+    error = null
+    try {
+      const names = await ListPhotos()
+      photos = names.map((name) => `${photosRoutePrefix}${name}`)
+      activeIndex = 0
+    } catch (err) {
+      error = String(err)
+    }
   }
 
   export async function chooseFolder(): Promise<void> {
-    const selected = await ChoosePhotosFolder()
-    if (!selected) return
-    await loadPhotos()
+    error = null
+    try {
+      const selected = await ChoosePhotosFolder()
+      if (!selected) return
+      await loadPhotos()
+    } catch (err) {
+      error = String(err)
+    }
   }
 
   onMount(loadPhotos)
 
-  $: slideDuration, restartTimer()
+  $: photos, slideDuration, restartTimer()
 
   onDestroy(() => clearInterval(timer))
 </script>
@@ -79,7 +91,19 @@
   on:touchstart={handleDragStart}
   on:touchend={handleDragEnd}
 >
-  {#if photos.length === 0}
+  <WidgetNavigation on:home>
+    <svelte:fragment slot="actions">
+      <Button ghost on:click={chooseFolder} aria-label={changePhotosFolderLabel}>
+        <FolderOpen size={pickerIconSize} />
+      </Button>
+    </svelte:fragment>
+  </WidgetNavigation>
+
+  {#if error}
+    <div class="slideshow__message">
+      <Message variant="error" message={error} />
+    </div>
+  {:else if photos.length === 0}
     <div class="slideshow__picker">
       <Button on:click={chooseFolder}>
         <FolderOpen size={pickerIconSize} />
@@ -125,9 +149,12 @@
 
 <style>
   .slideshow {
+    --slideshow-padding: 1rem;
     position: fixed;
     inset: 0;
     z-index: 0;
+    box-sizing: border-box;
+    padding: var(--slideshow-padding);
     overflow: hidden;
     touch-action: none;
   }
@@ -148,6 +175,19 @@
   .slideshow__picker :global(.button) {
     gap: var(--slideshow-picker-gap);
     font-size: var(--slideshow-picker-font-size);
+  }
+
+  .slideshow__message {
+    --slideshow-message-edge: 0;
+    --slideshow-message-layer: 3;
+    --slideshow-message-padding: 2rem;
+    position: absolute;
+    inset: var(--slideshow-message-edge);
+    z-index: var(--slideshow-message-layer);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--slideshow-message-padding);
   }
 
   .slideshow__photo {

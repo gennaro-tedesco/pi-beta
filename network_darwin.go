@@ -65,13 +65,12 @@ func readNetworkLink() networkLink {
 		return networkLink{connectionType: networkConnectionUnknown}
 	}
 	if nativeLink.connected != nativeNetworkEnabled {
-		return networkLink{available: true, connectionType: networkConnectionNone}
+		return networkLink{connectionType: networkConnectionNone}
 	}
 
 	signalPercent := normalizeRSSI(int(nativeLink.rssi))
 	signalDbm := int(nativeLink.rssi)
 	link := networkLink{
-		available:      true,
 		connectionType: networkConnectionWiFi,
 		signalPercent:  &signalPercent,
 		signalDbm:      &signalDbm,
