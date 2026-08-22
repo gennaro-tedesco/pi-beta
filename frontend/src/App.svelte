@@ -19,56 +19,104 @@
   const networkWidgetId = 'network'
   const networkTitle = 'Machine'
   const nextDayOffset = 1
-  const tileSwipeThresholdPx = 48
-  const previousTileOffset = -1
-  const nextTileOffset = 1
+  const tileCount = 4
+  const tileScrollSpeedPxPerSecond = 72
+  const tileSwipeThresholdPx = 8
   const tileSwipeClickResetDelayMs = 0
-  const tileScrollBehavior: ScrollBehavior = 'smooth'
+  const primaryPointerButton = 0
+  const initialTileScrollDurationSeconds = 1
+  const numericFallback = 0
   const calendarDateRefreshIntervalMs = 60000
   const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' })
   const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
 
   let activeWidget: WidgetId | null = null
   let currentDate = new Date()
-  let tileSwipeStartX: number | null = null
-  let tileSwipeConsumed = false
   let calendarDateRefreshTimer: ReturnType<typeof setInterval>
+  let tileDragStartX: number | null = null
+  let tileDragStartPhaseSeconds = numericFallback
+  let tileScrollDurationSeconds = initialTileScrollDurationSeconds
+  let tileScrollPhaseSeconds = numericFallback
+  let tileSwipeConsumed = false
+  let tilesInteracting = false
 
-  function handleTilesPointerDown(event: PointerEvent): void {
-    tileSwipeStartX = event.clientX
-    tileSwipeConsumed = false
+  function tilesScroll(trackElement: HTMLDivElement) {
+    const tileElements = Array.from(trackElement.children) as HTMLDivElement[]
+    const firstTile = tileElements[0]
+
+    const measure = () => {
+      const gapPx = Number.parseFloat(getComputedStyle(trackElement).columnGap) || numericFallback
+      const minimumStridePx = firstTile.offsetWidth + gapPx
+      const minimumTravelDistancePx = trackElement.clientWidth + firstTile.offsetWidth
+      const stridePx = Math.max(minimumStridePx, minimumTravelDistancePx / tileCount)
+      const travelDistancePx = stridePx * tileCount
+      const durationSeconds = travelDistancePx / tileScrollSpeedPxPerSecond
+
+      tileScrollDurationSeconds = durationSeconds
+      trackElement.style.setProperty('--tiles-scroll-distance', `${travelDistancePx}px`)
+      trackElement.style.setProperty('--tiles-scroll-duration', `${durationSeconds}s`)
+
+      tileElements.forEach((tileElement, index) => {
+        const delaySeconds = -(index * stridePx) / tileScrollSpeedPxPerSecond
+        tileElement.style.setProperty('--tile-scroll-delay', `${delaySeconds}s`)
+      })
+    }
+
+    const resizeObserver = new ResizeObserver(measure)
+    resizeObserver.observe(trackElement)
+    resizeObserver.observe(firstTile)
+    measure()
+
+    return {
+      destroy(): void {
+        resizeObserver.disconnect()
+      },
+    }
   }
 
-  function scrollTiles(tiles: HTMLElement, offset: number): void {
-    const tileElements = Array.from(tiles.children) as HTMLElement[]
-    const firstTile = tileElements[0]
-    const secondTile = tileElements[1]
-    if (!firstTile || !secondTile) return
+  function normalizeTileScrollPhase(phaseSeconds: number): number {
+    return ((phaseSeconds % tileScrollDurationSeconds) + tileScrollDurationSeconds) % tileScrollDurationSeconds
+  }
 
-    const tileStride = secondTile.offsetLeft - firstTile.offsetLeft
-    tiles.scrollBy({ left: offset * tileStride, behavior: tileScrollBehavior })
+  function handleTilesPointerDown(event: PointerEvent): void {
+    if (event.button !== primaryPointerButton) return
+
+    tileDragStartX = event.clientX
+    tileDragStartPhaseSeconds = tileScrollPhaseSeconds
+    tileSwipeConsumed = false
+    tilesInteracting = true
+  }
+
+  function handleTilesPointerMove(event: PointerEvent): void {
+    if (tileDragStartX === null) return
+
+    const horizontalDistancePx = event.clientX - tileDragStartX
+    if (!tileSwipeConsumed && Math.abs(horizontalDistancePx) >= tileSwipeThresholdPx) {
+      const tilesElement = event.currentTarget as HTMLDivElement
+      tileSwipeConsumed = true
+      tilesElement.setPointerCapture(event.pointerId)
+    }
+    tileScrollPhaseSeconds = normalizeTileScrollPhase(
+      tileDragStartPhaseSeconds - horizontalDistancePx / tileScrollSpeedPxPerSecond,
+    )
   }
 
   function handleTilesPointerUp(event: PointerEvent): void {
-    if (tileSwipeStartX === null) return
+    if (tileDragStartX === null) return
 
-    const horizontalDistance = event.clientX - tileSwipeStartX
-    tileSwipeStartX = null
-
-    if (horizontalDistance >= tileSwipeThresholdPx) {
-      tileSwipeConsumed = true
-      scrollTiles(event.currentTarget as HTMLElement, previousTileOffset)
-    } else if (horizontalDistance <= -tileSwipeThresholdPx) {
-      tileSwipeConsumed = true
-      scrollTiles(event.currentTarget as HTMLElement, nextTileOffset)
-    }
+    const tilesElement = event.currentTarget as HTMLDivElement
+    tileDragStartX = null
+    tilesInteracting = false
+    if (tilesElement.hasPointerCapture(event.pointerId)) tilesElement.releasePointerCapture(event.pointerId)
 
     if (tileSwipeConsumed) window.setTimeout(() => tileSwipeConsumed = false, tileSwipeClickResetDelayMs)
   }
 
   function cancelTileSwipe(): void {
-    tileSwipeStartX = null
+    tileDragStartX = null
+    tileScrollPhaseSeconds = tileDragStartPhaseSeconds
     tileSwipeConsumed = false
+    tilesInteracting = false
   }
 
   function maximize(id: WidgetId): void {
@@ -102,61 +150,74 @@
     {#if activeWidget === null}
       <div
         class="tiles"
+        class:tiles--interacting={tilesInteracting}
+        style="--tile-column-count: {tileCount}; --tiles-manual-delay: {-tileScrollPhaseSeconds}s"
         on:pointerdown={handleTilesPointerDown}
+        on:pointermove={handleTilesPointerMove}
         on:pointerup={handleTilesPointerUp}
         on:pointercancel={cancelTileSwipe}
         out:fade={{ duration: transitionDuration }}
         in:fade={{ duration: transitionDuration, delay: transitionDuration }}
       >
-        <Tile title="Photos" on:toggle={() => maximize('photos')}>
-          <div slot="visual" class="tile__slideshow" aria-hidden="true">
-            <img class="tile__ambient tile__ambient--camera" src={cameraIllustration} alt="" />
-            <img class="tile__ambient tile__ambient--film" src={filmIllustration} alt="" />
-            <div class="tile__landscapes">
-              <div class="tile__landscape tile__landscape--alpine">
-                <span class="tile__orb tile__orb--sun" />
-                <span class="tile__ridge tile__ridge--far" />
-                <span class="tile__ridge tile__ridge--near" />
+        <div class="tiles__track" use:tilesScroll>
+          <div class="tiles__item">
+            <Tile title="Photos" on:toggle={() => maximize('photos')}>
+              <div slot="visual" class="tile__slideshow" aria-hidden="true">
+                <img class="tile__ambient tile__ambient--camera" src={cameraIllustration} alt="" />
+                <img class="tile__ambient tile__ambient--film" src={filmIllustration} alt="" />
+                <div class="tile__landscapes">
+                  <div class="tile__landscape tile__landscape--alpine">
+                    <span class="tile__orb tile__orb--sun" />
+                    <span class="tile__ridge tile__ridge--far" />
+                    <span class="tile__ridge tile__ridge--near" />
+                  </div>
+                  <div class="tile__landscape tile__landscape--coast">
+                    <span class="tile__orb tile__orb--moon" />
+                    <span class="tile__wave tile__wave--far" />
+                    <span class="tile__wave tile__wave--near" />
+                  </div>
+                  <div class="tile__landscape tile__landscape--meadow">
+                    <span class="tile__cloud tile__cloud--one" />
+                    <span class="tile__cloud tile__cloud--two" />
+                    <span class="tile__hill tile__hill--far" />
+                    <span class="tile__hill tile__hill--near" />
+                  </div>
+                </div>
               </div>
-              <div class="tile__landscape tile__landscape--coast">
-                <span class="tile__orb tile__orb--moon" />
-                <span class="tile__wave tile__wave--far" />
-                <span class="tile__wave tile__wave--near" />
+            </Tile>
+          </div>
+          <div class="tiles__item">
+            <Tile title="Weather" on:toggle={() => maximize('weather')}>
+              <img slot="visual" class="tile__weather-scene" src={weatherTileAnimation} alt="" />
+            </Tile>
+          </div>
+          <div class="tiles__item">
+            <Tile title={calendarTitle} on:toggle={() => maximize(calendarWidgetId)}>
+              <div slot="visual" class="tile__calendar" aria-hidden="true">
+                <div class="tile__calendar-binding"><span /><span /></div>
+                <div class="tile__calendar-page">
+                  <span class="tile__calendar-month">{monthFormatter.format(tomorrow)}</span>
+                  <strong class="tile__calendar-day">{tomorrow.getDate()}</strong>
+                  <span class="tile__calendar-weekday">{weekdayFormatter.format(tomorrow)}</span>
+                </div>
+                <div class="tile__calendar-page tile__calendar-page--turning">
+                  <span class="tile__calendar-month">{monthFormatter.format(currentDate)}</span>
+                  <strong class="tile__calendar-day">{currentDate.getDate()}</strong>
+                  <span class="tile__calendar-weekday">{weekdayFormatter.format(currentDate)}</span>
+                </div>
               </div>
-              <div class="tile__landscape tile__landscape--meadow">
-                <span class="tile__cloud tile__cloud--one" />
-                <span class="tile__cloud tile__cloud--two" />
-                <span class="tile__hill tile__hill--far" />
-                <span class="tile__hill tile__hill--near" />
+            </Tile>
+          </div>
+          <div class="tiles__item">
+            <Tile title={networkTitle} on:toggle={() => maximize(networkWidgetId)}>
+              <div slot="visual" class="tile__network" aria-hidden="true">
+                <div class="tile__network-icon">
+                  <Wifi />
+                </div>
               </div>
-            </div>
+            </Tile>
           </div>
-        </Tile>
-        <Tile title="Weather" on:toggle={() => maximize('weather')}>
-          <img slot="visual" class="tile__weather-scene" src={weatherTileAnimation} alt="" />
-        </Tile>
-        <Tile title={calendarTitle} on:toggle={() => maximize(calendarWidgetId)}>
-          <div slot="visual" class="tile__calendar" aria-hidden="true">
-            <div class="tile__calendar-binding"><span /><span /></div>
-            <div class="tile__calendar-page">
-              <span class="tile__calendar-month">{monthFormatter.format(tomorrow)}</span>
-              <strong class="tile__calendar-day">{tomorrow.getDate()}</strong>
-              <span class="tile__calendar-weekday">{weekdayFormatter.format(tomorrow)}</span>
-            </div>
-            <div class="tile__calendar-page tile__calendar-page--turning">
-              <span class="tile__calendar-month">{monthFormatter.format(currentDate)}</span>
-              <strong class="tile__calendar-day">{currentDate.getDate()}</strong>
-              <span class="tile__calendar-weekday">{weekdayFormatter.format(currentDate)}</span>
-            </div>
-          </div>
-        </Tile>
-        <Tile title={networkTitle} on:toggle={() => maximize(networkWidgetId)}>
-          <div slot="visual" class="tile__network" aria-hidden="true">
-            <div class="tile__network-icon">
-              <Wifi />
-            </div>
-          </div>
-        </Tile>
+        </div>
       </div>
     {:else if activeWidget === 'weather'}
       <WeatherView on:home={goHome} />
@@ -194,39 +255,50 @@
   .tiles {
     --tile-height: 50vh;
     --tile-width: clamp(13rem, 27vw, 24rem);
-    --tile-column-count: 4;
+    --tiles-edge: 0;
+    --tiles-gap: 1rem;
     --tiles-width: 100%;
-    --tiles-horizontal-overflow: auto;
-    --tiles-justification: safe center;
-    --tiles-overscroll-behavior: contain;
-    --tiles-scroll-snap-type: x mandatory;
-    --tiles-scrollbar-visibility: none;
     --tiles-touch-action: pan-y;
-    display: grid;
-    grid-template-columns: repeat(var(--tile-column-count), var(--tile-width));
-    justify-content: var(--tiles-justification);
+    position: relative;
     width: var(--tiles-width);
-    gap: 1rem;
-    overflow-x: var(--tiles-horizontal-overflow);
-    overscroll-behavior-x: var(--tiles-overscroll-behavior);
-    scrollbar-width: var(--tiles-scrollbar-visibility);
-    -ms-overflow-style: var(--tiles-scrollbar-visibility);
-    scroll-snap-type: var(--tiles-scroll-snap-type);
+    height: var(--tile-height);
+    overflow: hidden;
     touch-action: var(--tiles-touch-action);
   }
 
-  .tiles::-webkit-scrollbar {
-    display: var(--tiles-scrollbar-visibility);
+  .tiles__track {
+    position: relative;
+    width: var(--tiles-width);
+    height: var(--tile-height);
+    column-gap: var(--tiles-gap);
+  }
+
+  .tiles__item {
+    position: absolute;
+    top: var(--tiles-edge);
+    left: var(--tiles-width);
+    height: var(--tile-height);
+    width: var(--tile-width);
+    animation: tilesScroll var(--tiles-scroll-duration) linear infinite;
+    animation-delay: calc(var(--tile-scroll-delay) + var(--tiles-manual-delay));
+    will-change: transform;
+  }
+
+  .tiles:hover .tiles__item,
+  .tiles:focus-within .tiles__item,
+  .tiles--interacting .tiles__item {
+    animation-play-state: paused;
+  }
+
+  @keyframes tilesScroll {
+    to {
+      transform: translateX(calc(-1 * var(--tiles-scroll-distance)));
+    }
   }
 
   .tiles :global(.tile) {
-    --tile-scroll-snap-alignment: start;
-    --tile-scroll-snap-stop: always;
-    flex: 0 0 auto;
-    height: var(--tile-height);
-    width: var(--tile-width);
-    scroll-snap-align: var(--tile-scroll-snap-alignment);
-    scroll-snap-stop: var(--tile-scroll-snap-stop);
+    height: 100%;
+    width: 100%;
   }
 
   .tiles :global(.tile__slideshow) {
@@ -499,6 +571,23 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .tiles {
+      overflow-x: auto;
+      touch-action: auto;
+    }
+
+    .tiles__track {
+      display: grid;
+      grid-template-columns: repeat(var(--tile-column-count), var(--tile-width));
+      gap: var(--tiles-gap);
+      width: max-content;
+    }
+
+    .tiles__item {
+      position: static;
+      animation: none;
+    }
+
     .tiles :global(.tile__ambient),
     .tiles :global(.tile__landscape),
     .tiles :global(.tile__landscape span),
