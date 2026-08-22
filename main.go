@@ -18,7 +18,6 @@ const (
 )
 
 const (
-	imagesRoutePrefix = "/images/"
 	photosRoutePrefix = "/photos/"
 )
 
@@ -27,9 +26,13 @@ func main() {
 	app := NewApp()
 
 	photosHandler := http.NewServeMux()
-	photosHandler.Handle(imagesRoutePrefix, http.StripPrefix(imagesRoutePrefix, http.FileServer(http.Dir(defaultPhotosDir))))
 	photosHandler.HandleFunc(photosRoutePrefix, func(w http.ResponseWriter, r *http.Request) {
-		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(app.getPhotosDir()))).ServeHTTP(w, r)
+		photosDir := app.getPhotosDir()
+		if photosDir == noPhotosDir {
+			http.NotFound(w, r)
+			return
+		}
+		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(photosDir))).ServeHTTP(w, r)
 	})
 
 	// Create application with options

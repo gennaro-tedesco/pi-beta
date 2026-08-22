@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte'
   import Button from './Button.svelte'
+  import homeLogoSrc from '../../assets/images/logo.png'
 
   const dispatch = createEventDispatcher<{ home: void }>()
   const homeLabel = 'Home'
-  const homeLogoSrc = '/images/logo.png'
 </script>
 
 <nav class="navigation">

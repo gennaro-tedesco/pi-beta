@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img width="300" height="300" src="images/logo.png">
+  <img width="300" height="300" src="frontend/src/assets/images/logo.png">
   <br>
   pi-beta
   <br>
