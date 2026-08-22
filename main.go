@@ -7,6 +7,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 )
 
 //go:embed all:frontend/dist
@@ -45,7 +46,10 @@ func main() {
 			Handler: photosHandler,
 		},
 		BackgroundColour: &colorBackground,
-		OnStartup:        app.startup,
+		Linux: &linux.Options{
+			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
+		},
+		OnStartup: app.startup,
 		Bind: []interface{}{
 			app,
 		},
