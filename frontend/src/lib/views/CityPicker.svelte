@@ -100,7 +100,7 @@
 
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
-  import { scale } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import L from 'leaflet'
   import 'leaflet/dist/leaflet.css'
   import { X } from 'lucide-svelte'
@@ -261,8 +261,8 @@
 
 <div
   class="picker"
-  out:scale={{ duration: transitionDuration }}
-  in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+  out:fade={{ duration: transitionDuration }}
+  in:fade={{ duration: transitionDuration, delay: transitionDuration }}
 >
   <div class="picker__header">
     <span class="picker__title">Choose a city</span>

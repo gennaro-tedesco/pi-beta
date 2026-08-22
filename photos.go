@@ -28,7 +28,7 @@ func (a *App) ListPhotos() ([]string, error) {
 		return nil, err
 	}
 
-	var photos []string
+	photos := []string{}
 	for _, entry := range entries {
 		if entry.IsDir() || entry.Name() == logoFilename {
 			continue

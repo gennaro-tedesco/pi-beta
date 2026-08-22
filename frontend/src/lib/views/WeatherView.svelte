@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { scale } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import { CircleGauge, Droplets, Leaf, LocateFixed, MapPin, Moon, MoonStar, RotateCw, Sun, SunMedium, Wind } from 'lucide-svelte'
   import { GetWeather, GetWeatherAt } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
@@ -279,16 +279,17 @@
     </svelte:fragment>
   </WidgetNavigation>
 
-  {#if showCityPicker}
-    <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
-  {:else}
-    {#key weatherViewKey}
-    <div
-      class="weather"
-      style:container-type={weatherContainerType}
-      out:scale={{ duration: weatherViewTransitionDuration }}
-      in:scale={{ duration: weatherViewTransitionDuration, delay: weatherViewTransitionDuration }}
-    >
+  <div class="weather-widget__content">
+    {#if showCityPicker}
+      <CityPicker on:select={handleCitySelect} on:close={closeCityPicker} />
+    {:else}
+      {#key weatherViewKey}
+      <div
+        class="weather"
+        style:container-type={weatherContainerType}
+        out:fade={{ duration: weatherViewTransitionDuration }}
+        in:fade={{ duration: weatherViewTransitionDuration, delay: weatherViewTransitionDuration }}
+      >
   {#if error}
     <Message variant="error" message={error} />
   {:else if loading || weather === null || scene === null || iconUrl === null}
@@ -421,15 +422,17 @@
       </div>
     </div>
   {/if}
-    </div>
-    {/key}
-  {/if}
+      </div>
+      {/key}
+    {/if}
+  </div>
 </div>
 
 <style>
   .weather-widget {
     --weather-widget-edge: 0;
     --weather-widget-fill: 100%;
+    --weather-widget-grow: 1;
     --weather-widget-minimum: 0;
     --weather-widget-padding: 1rem;
     --weather-widget-gap: 1rem;
@@ -448,6 +451,18 @@
 
   .weather-widget--night {
     filter: brightness(var(--weather-widget-night-brightness));
+  }
+
+  .weather-widget__content {
+    position: relative;
+    flex: var(--weather-widget-grow);
+    min-height: var(--weather-widget-minimum);
+  }
+
+  .weather-widget__content > .weather,
+  .weather-widget__content > :global(.picker) {
+    position: absolute;
+    inset: var(--weather-widget-edge);
   }
 
   .sky {

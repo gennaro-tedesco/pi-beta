@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { fade, scale } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import { FolderOpen, Rabbit, Turtle } from 'lucide-svelte'
   import { Button, Message, WidgetNavigation } from '../components'
   import { transitionDuration } from '../transition'
@@ -84,8 +84,8 @@
 
 <div
   class="slideshow"
-  out:scale={{ duration: transitionDuration }}
-  in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+  out:fade={{ duration: transitionDuration }}
+  in:fade={{ duration: transitionDuration, delay: transitionDuration }}
   on:mousedown={handleDragStart}
   on:mouseup={handleDragEnd}
   on:touchstart={handleDragStart}

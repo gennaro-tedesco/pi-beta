@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { scale } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import { Activity, MemoryStick, Percent, RadioTower, RotateCw, Waves, Wifi } from 'lucide-svelte'
   import { GetMachineStatus } from '../../../wailsjs/go/main/App'
   import type { main } from '../../../wailsjs/go/models'
@@ -165,8 +165,8 @@
     class="machine"
     style:container-type={machineContainerType}
     aria-label={machineAriaLabel}
-    out:scale={{ duration: transitionDuration }}
-    in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+    out:fade={{ duration: transitionDuration }}
+    in:fade={{ duration: transitionDuration, delay: transitionDuration }}
   >
   {#if error}
     <Message variant="error" message={error} />

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { fly, scale } from 'svelte/transition'
+  import { fade, fly } from 'svelte/transition'
   import { CalendarSync } from 'lucide-svelte'
   import { Button, WidgetNavigation } from '../components'
   import { transitionDuration } from '../transition'
@@ -257,8 +257,8 @@
       on:pointerdown={handleCalendarPointerDown}
       on:pointerup={handleCalendarPointerUp}
       on:pointercancel={cancelCalendarSwipe}
-      out:scale={{ duration: transitionDuration }}
-      in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+      out:fade={{ duration: transitionDuration }}
+      in:fade={{ duration: transitionDuration, delay: transitionDuration }}
     >
     <header class="calendar__header">
       <h1>
@@ -371,6 +371,7 @@
     --calendar-width: 100%;
     --calendar-height: 100%;
     --calendar-gap: min(0.75rem, 2.5cqh);
+    --calendar-header-spacing: min(1rem, 3cqh);
     --calendar-padding: min(1.25rem, 4cqh);
     --calendar-radius: 1rem;
     --calendar-background: transparent;
@@ -418,7 +419,9 @@
     height: var(--calendar-height);
     min-height: var(--calendar-zero);
     box-sizing: border-box;
-    padding: var(--calendar-padding);
+    padding-inline: var(--calendar-padding);
+    padding-block-start: var(--calendar-zero);
+    padding-block-end: var(--calendar-padding);
     border: var(--calendar-border);
     border-radius: var(--calendar-radius);
     background: var(--calendar-background);
@@ -429,6 +432,7 @@
   .calendar__header {
     position: relative;
     z-index: var(--calendar-menu-layer);
+    margin-block-end: var(--calendar-header-spacing);
     text-align: center;
   }
 

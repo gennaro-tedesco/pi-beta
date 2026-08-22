@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
-  import { scale } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import { Wifi } from 'lucide-svelte'
   import { Tile } from './lib/components'
   import WeatherView from './lib/views/WeatherView.svelte'
@@ -105,8 +105,8 @@
         on:pointerdown={handleTilesPointerDown}
         on:pointerup={handleTilesPointerUp}
         on:pointercancel={cancelTileSwipe}
-        out:scale={{ duration: transitionDuration }}
-        in:scale={{ duration: transitionDuration, delay: transitionDuration }}
+        out:fade={{ duration: transitionDuration }}
+        in:fade={{ duration: transitionDuration, delay: transitionDuration }}
       >
         <Tile title="Photos" on:toggle={() => maximize('photos')}>
           <div slot="visual" class="tile__slideshow" aria-hidden="true">
@@ -181,8 +181,6 @@
     padding: 1rem;
     gap: 1rem;
     background-image: var(--app-background);
-    background-size: 200% 200%;
-    animation: driftGradient 30s ease-in-out infinite;
   }
 
   .content {
@@ -698,13 +696,4 @@
     }
   }
 
-  @keyframes driftGradient {
-    0%,
-    100% {
-      background-position: 0% 0%;
-    }
-    50% {
-      background-position: 100% 100%;
-    }
-  }
 </style>
