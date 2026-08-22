@@ -182,6 +182,7 @@
     gap: 1rem;
     background-image: var(--app-background);
     background-size: 200% 200%;
+    animation: driftGradient 30s ease-in-out infinite;
   }
 
   .content {
@@ -504,7 +505,6 @@
     .tiles :global(.tile__landscape),
     .tiles :global(.tile__landscape span),
     .tiles :global(.tile__calendar-page--turning),
-    .tiles :global(.tile__weather-scene),
     .tiles :global(.tile__network-icon) {
       animation-play-state: paused;
     }
@@ -698,4 +698,13 @@
     }
   }
 
+  @keyframes driftGradient {
+    0%,
+    100% {
+      background-position: 0% 0%;
+    }
+    50% {
+      background-position: 100% 100%;
+    }
+  }
 </style>

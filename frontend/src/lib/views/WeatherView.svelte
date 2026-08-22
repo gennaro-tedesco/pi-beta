@@ -250,7 +250,7 @@
   $: chartMaxTemperature = weather && weather.hourlyTemperature.length ? Math.max(...weather.hourlyTemperature) : null
 </script>
 
-<div class="weather-widget" style={scene ? `background-image: ${scene.gradient}` : ''}>
+<div class="weather-widget" class:weather-widget--night={scene?.night} style={scene ? `background-image: ${scene.gradient}` : ''}>
   {#if scene && !showCityPicker}
     <div class="sky" aria-hidden="true">
       {#if scene.night}
@@ -424,9 +424,6 @@
     </div>
     {/key}
   {/if}
-  {#if scene?.night}
-    <div class="weather-widget__night-overlay" aria-hidden="true" />
-  {/if}
 </div>
 
 <style>
@@ -436,9 +433,7 @@
     --weather-widget-minimum: 0;
     --weather-widget-padding: 1rem;
     --weather-widget-gap: 1rem;
-    --weather-widget-night-overlay-color: #000000;
-    --weather-widget-night-overlay-opacity: 0.18;
-    --weather-widget-night-overlay-layer: 1001;
+    --weather-widget-night-brightness: 0.82;
     position: absolute;
     inset: var(--weather-widget-edge);
     display: flex;
@@ -451,13 +446,8 @@
     gap: var(--weather-widget-gap);
   }
 
-  .weather-widget__night-overlay {
-    position: absolute;
-    inset: var(--weather-widget-edge);
-    z-index: var(--weather-widget-night-overlay-layer);
-    background-color: var(--weather-widget-night-overlay-color);
-    opacity: var(--weather-widget-night-overlay-opacity);
-    pointer-events: none;
+  .weather-widget--night {
+    filter: brightness(var(--weather-widget-night-brightness));
   }
 
   .sky {
@@ -1031,8 +1021,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .sky__star,
-    .card__icon,
     .sun-cycle__arc path,
     .sun-cycle__sun--daylight,
     .sun-cycle__event-icon {

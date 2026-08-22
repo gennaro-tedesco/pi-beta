@@ -7,7 +7,6 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/linux"
 )
 
 //go:embed all:frontend/dist
@@ -19,6 +18,7 @@ const (
 )
 
 const (
+	imagesRoutePrefix = "/images/"
 	photosRoutePrefix = "/photos/"
 )
 
@@ -27,13 +27,9 @@ func main() {
 	app := NewApp()
 
 	photosHandler := http.NewServeMux()
+	photosHandler.Handle(imagesRoutePrefix, http.StripPrefix(imagesRoutePrefix, http.FileServer(http.Dir(defaultPhotosDir))))
 	photosHandler.HandleFunc(photosRoutePrefix, func(w http.ResponseWriter, r *http.Request) {
-		photosDir := app.getPhotosDir()
-		if photosDir == noPhotosDir {
-			http.NotFound(w, r)
-			return
-		}
-		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(photosDir))).ServeHTTP(w, r)
+		http.StripPrefix(photosRoutePrefix, http.FileServer(http.Dir(app.getPhotosDir()))).ServeHTTP(w, r)
 	})
 
 	// Create application with options
@@ -46,10 +42,7 @@ func main() {
 			Handler: photosHandler,
 		},
 		BackgroundColour: &colorBackground,
-		Linux: &linux.Options{
-			WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand,
-		},
-		OnStartup: app.startup,
+		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
 		},

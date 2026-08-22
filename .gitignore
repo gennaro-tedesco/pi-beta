@@ -2,6 +2,8 @@ build/bin
 frontend/dist
 frontend/node_modules
 frontend/wailsjs/runtime
+images/*
+!images/.gitkeep
 /pi-beta
 /frontend/pi-beta
 /.mcp_data/

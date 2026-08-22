@@ -10,6 +10,7 @@ permissions:
 
 env:
   APPLICATION_DESCRIPTION: Raspberry Pi dashboard
+  APPLICATION_ICON: build/appicon.png
   APPLICATION_MAINTAINER: Gennaro Tedesco <g.tedesco@finlink.de>
   APPLICATION_NAME: pi-beta
   APPLICATION_TITLE: Pi Beta
@@ -91,7 +92,7 @@ jobs:
           readonly icon_path="${package_root}/usr/share/icons/hicolor/512x512/apps/${APPLICATION_NAME}.png"
           readonly control_path="${package_root}/DEBIAN/control"
           install -Dm755 "build/bin/${APPLICATION_NAME}" "$application_path"
-          install -Dm644 build/appicon.png "$icon_path"
+          install -Dm644 "${APPLICATION_ICON}" "$icon_path"
           mkdir -p "$(dirname "$desktop_path")" "$(dirname "$control_path")"
           printf '%s\n' \
             '[Desktop Entry]' \
